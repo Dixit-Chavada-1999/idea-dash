@@ -1,8 +1,10 @@
+import { useAuth } from '../auth/context'
 import { useBasis } from '../basis/context'
 import { RUN } from '../data/console'
 
 export function CommandBar() {
   const { basis, setBasis } = useBasis()
+  const { signOut } = useAuth()
 
   return (
     <div className="cmd">
@@ -22,6 +24,10 @@ export function CommandBar() {
 
       <button className="btn" type="button">
         Export
+      </button>
+
+      <button className="btn" type="button" onClick={signOut}>
+        Sign out
       </button>
     </div>
   )

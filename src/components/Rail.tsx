@@ -1,6 +1,9 @@
+import { useAuth } from '../auth/context'
 import { NAV, RUN } from '../data/console'
 
 export function Rail({ active }: { active: string }) {
+  const { session } = useAuth()
+
   return (
     <aside className="rail">
       <div className="brand">
@@ -30,6 +33,7 @@ export function Rail({ active }: { active: string }) {
       </nav>
 
       <div className="rail-foot">
+        {session && <span className="rail-user">{session.email}</span>}
         <b>
           <span className="pulse" />
           Run {RUN.current}
