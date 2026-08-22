@@ -1,8 +1,17 @@
+import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/context'
-import { NAV, RUN } from '../data/console'
+import { NAV, PAGES, RUN } from '../data/console'
 
-export function Rail({ active }: { active: string }) {
+type Props = {
+  /** id of the section currently in view — only used on the dashboard route */
+  active: string
+  /** section anchors are hidden off the dashboard, where they would be dead links */
+  showSections?: boolean
+}
+
+export function Rail({ active, showSections = true }: Props) {
   const { session } = useAuth()
+  const { pathname } = useLocation()
 
   return (
     <aside className="rail">
@@ -15,21 +24,30 @@ export function Rail({ active }: { active: string }) {
       </div>
 
       <nav className="nav">
-        {NAV.map((g) => (
-          <div key={g.group}>
-            <div className="grp">{g.group}</div>
-            {g.items.map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
-                className={item.href === `#${active}` ? 'on' : undefined}
-              >
-                {item.label}
-                {item.clause && <span className="cl">{item.clause}</span>}
-              </a>
-            ))}
-          </div>
+        <div className="grp">Console</div>
+        {PAGES.map((p) => (
+          <Link key={p.to} to={p.to} className={pathname === p.to ? 'on' : undefined}>
+            {p.label}
+            {p.clause && <span className="cl">{p.clause}</span>}
+          </Link>
         ))}
+
+        {showSections &&
+          NAV.map((g) => (
+            <div key={g.group}>
+              <div className="grp">{g.group}</div>
+              {g.items.map((item) => (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  className={item.href === `#${active}` ? 'on' : undefined}
+                >
+                  {item.label}
+                  {item.clause && <span className="cl">{item.clause}</span>}
+                </a>
+              ))}
+            </div>
+          ))}
       </nav>
 
       <div className="rail-foot">

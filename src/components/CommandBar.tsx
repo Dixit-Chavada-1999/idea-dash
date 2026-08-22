@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { useAuth } from '../auth/context'
 import { useBasis } from '../basis/context'
 import { RUN } from '../data/console'
@@ -5,9 +6,27 @@ import { RUN } from '../data/console'
 export function CommandBar() {
   const { basis, setBasis } = useBasis()
   const { signOut } = useAuth()
+  const barRef = useRef<HTMLDivElement>(null)
+
+  /**
+   * The bar is sticky, so anchored sections would land underneath it.
+   * Publish its live height as --cmd-h; the sections use it as scroll-margin-top.
+   * Measured rather than hardcoded because the bar wraps to two rows when narrow.
+   */
+  useEffect(() => {
+    const el = barRef.current
+    if (!el) return
+    const apply = () =>
+      document.documentElement.style.setProperty('--cmd-h', `${Math.round(el.offsetHeight)}px`)
+    apply()
+    if (!('ResizeObserver' in window)) return
+    const ro = new ResizeObserver(apply)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   return (
-    <div className="cmd">
+    <div className="cmd" ref={barRef}>
       <h1>Operations Dashboard</h1>
       <span className="run">{RUN.source}</span>
       <span className="spacer" />

@@ -6,6 +6,13 @@ import { Illus } from '../components/Illus'
 export type NavGroup = { group: string; items: NavItem[] }
 export type NavItem = { href: string; label: string; clause?: string }
 
+/** Route-level navigation. Rendered as router links, always visible. */
+export const PAGES: { to: string; label: string; clause?: string }[] = [
+  { to: '/', label: 'Operations dashboard' },
+  { to: '/assistant', label: 'AI assistant', clause: 'NEW' },
+]
+
+/** In-page section anchors. Only meaningful on the dashboard route. */
 export const NAV: NavGroup[] = [
   {
     group: 'Run',
