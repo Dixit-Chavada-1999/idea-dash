@@ -1,34 +1,84 @@
-import type { ReactNode } from 'react'
-import { useBasis } from '../basis/context'
-import { Illus } from '../components/Illus'
+import { dashboardApi } from '../api/dashboard'
 import { SectionHead } from '../components/Panel'
 import { Sparkline } from '../components/Sparkline'
+import type { Kpi } from '../contracts/dashboard'
+import { useApi } from '../hooks/useApi'
 
-function Kpi({
-  title,
-  chip,
-  chipTone = '',
-  children,
-}: {
-  title: string
-  chip: string
-  chipTone?: string
-  children: ReactNode
-}) {
+const CONFIDENCE_CHIP: Record<Kpi['confidence'], { label: string; tone: string }> = {
+  measured: { label: 'MEASURED', tone: '' },
+  partial: { label: 'PARTIAL', tone: 'bound' },
+  unavailable: { label: 'NO DATA', tone: 'plain' },
+}
+
+function KpiCard({ kpi }: { kpi: Kpi }) {
+  const chip = CONFIDENCE_CHIP[kpi.confidence]
+
   return (
     <div className="kpi">
       <div className="kpi-hd">
-        <h3>{title}</h3>
-        <span className={chipTone ? `chip ${chipTone}` : 'chip'}>{chip}</span>
+        <h3>{kpi.label}</h3>
+        {/* Two different questions side by side: the rating says whether the figure
+            is good, the confidence chip says how much to trust it. Only three of
+            the six map to a band IDEA has set — the rest carry no dot. */}
+        {kpi.rating && <span className={`rag rag-${kpi.rating.band}`} title={kpi.rating.note} />}
+        <span className={chip.tone ? `chip ${chip.tone}` : 'chip'}>{chip.label}</span>
       </div>
-      <div className="kpi-body">{children}</div>
+      <div className="kpi-body">
+        <div className={kpi.confidence === 'unavailable' ? 'big muted' : 'big'}>{kpi.value}</div>
+
+        {(kpi.delta || kpi.meta?.length) && (
+          <div className="meta">
+            {kpi.delta && <span className={`delta ${kpi.delta.dir}`}>{kpi.delta.text}</span>}
+            {kpi.meta?.map((m, i) => <span key={`${kpi.key}-meta-${i}`}>{m}</span>)}
+          </div>
+        )}
+
+        {/* Only the date-stamped metrics carry a series. `plots` is always shown:
+            three of them answer a different question from the figure above, and
+            an unlabelled line would be read as that figure's own history. */}
+        {kpi.series && (
+          <>
+            <Sparkline values={kpi.series.values} />
+            <div className="meta">
+              <span>{kpi.series.plots}</span>
+              <span>
+                {kpi.series.label} · complete months only
+              </span>
+            </div>
+          </>
+        )}
+
+        {kpi.rating && <div className="rag-note">{kpi.rating.note}</div>}
+
+        {kpi.caveat && <div className="caveat">{kpi.caveat}</div>}
+      </div>
+    </div>
+  )
+}
+
+/** Six placeholder cards so the grid does not jump when the figures arrive. */
+function Skeleton() {
+  return (
+    <div className="kpis">
+      {Array.from({ length: 6 }, (_, i) => (
+        <div className="kpi" key={i}>
+          <div className="kpi-hd">
+            <h3>Loading</h3>
+          </div>
+          <div className="kpi-body">
+            <div className="big muted">—</div>
+            <div className="meta">
+              <span>reading the reporting database…</span>
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
 
 export function Headline() {
-  const { figures, tags, isGross } = useBasis()
-  const basisTone = isGross ? 'sp' : ''
+  const state = useApi(() => dashboardApi.headline())
 
   return (
     <section className="sec fade" id="headline" style={{ animationDelay: '.05s' }}>
@@ -36,103 +86,72 @@ export function Headline() {
         title="Headline"
         clause="§5.1 – §5.6"
         right={
-          <>
-            Solid figures trace to your methodology doc · <span className="illus">dotted</span> are illustrative
-            pending first live run
-          </>
+          state.status === 'ready'
+            ? `Measured over ${state.data.period.label}`
+            : 'Live figures from the reporting database'
         }
       />
 
-      <div className="kpis">
-        <Kpi title="Orders won YTD" chip={tags.orders} chipTone={basisTone}>
-          <div className="big">{figures.orders}</div>
-          <div className="meta">
-            <span className="delta up">▲ 17.8%</span>
-            <span>
-              <span className="num">63</span> orders vs <Illus mono>54</Illus> same period LY
-            </span>
-          </div>
-          <Sparkline values={[12, 19, 17, 26, 31, 29, 38, 44]} />
-          <div className="caveat">
-            Dated on <strong>PO Received only</strong>. Start date is overwritten whenever a project reopens —
-            using it overstated this figure by ~40% on the first pass.
-          </div>
-        </Kpi>
+      {state.status === 'loading' && <Skeleton />}
 
-        <Kpi title="Live proposals" chip="VALUE FIELD" chipTone="plain">
-          <div className="big">
-            <Illus>£2,341,600</Illus>
+      {state.status === 'error' && (
+        <div className="panel">
+          <div className="panel-hd">
+            <h3>Figures unavailable</h3>
           </div>
-          <div className="meta">
-            <span className="delta dn illus" title="Illustrative">
-              ▼ 5.8%
-            </span>
-            <span>
-              <Illus mono>31</Illus> open · status Proposal sent
-            </span>
+          <div className="panel-body">
+            <div className="gate-err">{state.message}</div>
+            <p className="wg-note" style={{ marginTop: 12, borderTop: 0, paddingTop: 0 }}>
+              Nothing is shown rather than a stale or estimated number.
+            </p>
           </div>
-          <Sparkline values={[30, 33, 31, 36, 34, 39, 41, 37]} />
-        </Kpi>
+        </div>
+      )}
 
-        <Kpi title="Enquiries YTD" chip="COUNT" chipTone="plain">
-          <div className="big">
-            <Illus>214</Illus>
+      {state.status === 'ready' && (
+        <>
+          <div className="kpis">
+            {state.data.kpis.map((k) => (
+              <KpiCard kpi={k} key={k.key} />
+            ))}
           </div>
-          <div className="meta">
-            <span className="delta up illus" title="Illustrative">
-              ▲ 9.2%
-            </span>
-            <span>no status filter applied</span>
-          </div>
-          <Sparkline values={[18, 22, 20, 25, 27, 24, 29, 31]} />
-        </Kpi>
 
-        <Kpi title="Conversion, H1" chip="COHORT" chipTone="bound">
-          <div className="big">
-            <Illus>38.6%</Illus>
+          <div className="footnote" style={{ marginTop: 16 }}>
+            <span className="lead">What these figures rest on</span>
+            <p>
+              <strong className="num">{state.data.integrity.projectsActive.toLocaleString('en-GB')}</strong> active
+              projects of {state.data.integrity.projectsTotal.toLocaleString('en-GB')} on file.{' '}
+              <strong className="num">
+                £{Math.round(state.data.integrity.valueRecoveredFromCsv).toLocaleString('en-GB')}
+              </strong>{' '}
+              of project value sits in the migration&rsquo;s raw import column and is counted here — summing the
+              live column alone would miss it.{' '}
+              <strong className="num">{state.data.integrity.projectsWithoutValue}</strong> projects carry no value
+              in either column, and{' '}
+              <strong className="num">{state.data.integrity.orphanClients}</strong> reference a client that no
+              longer exists.
+            </p>
+            <div className="keyline">
+              <span>
+                <b>Basis</b> no services-only / gross split is applied.{' '}
+                {state.data.integrity.procurementProjects > 0 ? (
+                  <>
+                    The numeric procurement columns are empty, but{' '}
+                    <strong className="num">{state.data.integrity.procurementProjects}</strong> projects carry £
+                    {Math.round(state.data.integrity.procurementValue).toLocaleString('en-GB')} in{' '}
+                    <code>procurement_global</code> — enough to build one
+                  </>
+                ) : (
+                  <>No procurement is recorded anywhere in this data</>
+                )}
+              </span>
+              <span>
+                <b>Read</b> {new Date(state.data.generatedAt).toLocaleString('en-GB')}
+              </span>
+            </div>
           </div>
-          <div className="meta">
-            <span>
-              vs <Illus mono>44.1%</Illus> H1 last year
-            </span>
-          </div>
-          <div className="caveat">
-            <strong>Not like-for-like.</strong> This year&rsquo;s H1 cohort hasn&rsquo;t finished maturing — some
-            enquiries simply haven&rsquo;t had time to convert. The gap is partly an artefact of the clock.
-          </div>
-        </Kpi>
-
-        <Kpi title="Current backlog" chip={tags.backlog} chipTone={basisTone}>
-          <div className="big">
-            <Illus>{figures.backlog}</Illus>
-          </div>
-          <div className="meta">
-            <span>4 disciplines</span>
-            <span>hybrid CRM + Tracker</span>
-          </div>
-          <Sparkline values={[24, 26, 25, 27, 26, 28, 27, 29]} />
-          <div className="caveat">
-            Remaining budget, not awarded value. Three pre-2025 Live codes (24123, 24156, 24219) sourced from the
-            Tracker and folded into the same four buckets.
-          </div>
-        </Kpi>
-
-        <Kpi title="Operating margin, live" chip={tags.margin} chipTone={basisTone}>
-          <div className="big">
-            <Illus>{figures.marginLive}</Illus>
-          </div>
-          <div className="meta">
-            <span>
-              Historical, completed <Illus mono>{figures.marginHist}</Illus>
-            </span>
-          </div>
-          <Sparkline values={[19, 20, 22, 21, 23, 22, 21, 21]} />
-          <div className="caveat">
-            Live is earned value less actual. Historical splits pre/post-2025 across Tracker and CRM,
-            services-only columns on both sides.
-          </div>
-        </Kpi>
-      </div>
+        </>
+      )}
     </section>
   )
 }

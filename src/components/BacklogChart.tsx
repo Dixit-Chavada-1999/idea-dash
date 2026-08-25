@@ -1,4 +1,4 @@
-import { BACKLOG_BARS, type BacklogBar } from '../data/backlog'
+import type { BacklogBar } from '../data/backlog'
 
 const AXIS_MAX = 450_000
 const TICKS = [0, 150_000, 300_000, 450_000]
@@ -13,7 +13,7 @@ const fmt = (v: number) => `${Math.round(v / 1000)}k`
 const centre = (i: number) => FIRST_X + i * GAP + BAR_W / 2
 
 /** Remaining budget by discipline. Scale is computed, so the bars stay honest. */
-export function BacklogChart({ bars = BACKLOG_BARS }: { bars?: BacklogBar[] }) {
+export function BacklogChart({ bars }: { bars: BacklogBar[] }) {
   return (
     <svg viewBox="0 0 430 210" width="100%" height={210} role="img" aria-label="Backlog by discipline">
       {/* y-axis ticks */}

@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/context'
-import { NAV, PAGES, RUN } from '../data/console'
+import { NAV, PAGES } from '../data/console'
+import { formatDay, useRun } from '../run/context'
 
 type Props = {
   /** id of the section currently in view — only used on the dashboard route */
@@ -10,7 +11,8 @@ type Props = {
 }
 
 export function Rail({ active, showSections = true }: Props) {
-  const { session } = useAuth()
+  const { user } = useAuth()
+  const run = useRun()
   const { pathname } = useLocation()
 
   return (
@@ -51,14 +53,24 @@ export function Rail({ active, showSections = true }: Props) {
       </nav>
 
       <div className="rail-foot">
-        {session && <span className="rail-user">{session.email}</span>}
+        {user && <span className="rail-user">{user.email}</span>}
         <b>
           <span className="pulse" />
-          Run {RUN.current}
+          {run.status === 'ready' && run.data.latestData
+            ? `Data to ${formatDay(run.data.latestData)}`
+            : run.status === 'error'
+              ? 'Data date unavailable'
+              : 'Reading…'}
         </b>
-        Previous {RUN.previous}
+        {/* no run history is stored, so the header reports this read, not a previous one */}
+        {run.status === 'ready' && `Read ${new Date(run.data.generatedAt).toLocaleString('en-GB')}`}
         <br />
-        <span className="num">{RUN.cleanRows}</span> clean rows
+        {run.status === 'ready' && (
+          <>
+            <span className="num">{run.data.cleanRows.toLocaleString('en-GB')}</span> clean rows of{' '}
+            {run.data.totalRows.toLocaleString('en-GB')}
+          </>
+        )}
       </div>
     </aside>
   )

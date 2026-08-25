@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
 
   // The API lives in its own repo and runs as a separate Node process.
   // Proxying in dev keeps the client code identical to production and avoids CORS locally.
-  const apiTarget = env.VITE_API_PROXY ?? 'http://localhost:4000'
+  const apiTarget = env.VITE_API_PROXY ?? 'http://localhost:5000'
 
   return {
     plugins: [react(), tailwindcss()],

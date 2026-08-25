@@ -1,24 +1,20 @@
 import { createContext, useContext } from 'react'
-
-/**
- * Demo-only credentials. This is a wireframe gate, not authentication:
- * the check runs in the browser, so anyone can read it out of the bundle.
- * Swap for a real provider before this holds anything confidential.
- */
-export const DEMO_CREDENTIALS = {
-  email: 'admin@ideadesh.com',
-  password: 'admin@123',
-}
-
-export const SESSION_KEY = 'idea-console-session'
-
-export type Session = { email: string }
+import type { PublicUser } from '../contracts/auth'
 
 export type AuthValue = {
-  session: Session | null
-  /** returns null on success, or a message to show on the form */
-  signIn: (email: string, password: string) => string | null
-  signOut: () => void
+  user: PublicUser | null
+  /** true until the initial /auth/me check settles — render nothing decisive before then */
+  loading: boolean
+  /** resolves to null on success, or a message to show on the form */
+  signIn: (email: string, password: string) => Promise<string | null>
+  signUp: (input: {
+    email: string
+    password: string
+    firstName?: string
+    lastName?: string
+  }) => Promise<string | null>
+  signOut: () => Promise<void>
+  changePassword: (currentPassword: string, newPassword: string) => Promise<string | null>
 }
 
 export const AuthContext = createContext<AuthValue | null>(null)

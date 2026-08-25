@@ -1,11 +1,12 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../auth/context'
+import { ChangePassword } from './ChangePassword'
 import { useBasis } from '../basis/context'
-import { RUN } from '../data/console'
 
 export function CommandBar() {
   const { basis, setBasis } = useBasis()
   const { signOut } = useAuth()
+  const [changingPassword, setChangingPassword] = useState(false)
   const barRef = useRef<HTMLDivElement>(null)
 
   /**
@@ -28,7 +29,6 @@ export function CommandBar() {
   return (
     <div className="cmd" ref={barRef}>
       <h1>Operations Dashboard</h1>
-      <span className="run">{RUN.source}</span>
       <span className="spacer" />
 
       <div className="basis" role="group" aria-label="Reporting basis">
@@ -45,9 +45,14 @@ export function CommandBar() {
         Export
       </button>
 
-      <button className="btn" type="button" onClick={signOut}>
+      <button className="btn" type="button" onClick={() => setChangingPassword(true)}>
+        Password
+      </button>
+      <button className="btn" type="button" onClick={() => void signOut()}>
         Sign out
       </button>
+
+      {changingPassword && <ChangePassword onClose={() => setChangingPassword(false)} />}
     </div>
   )
 }
@@ -58,9 +63,10 @@ export function AlertBar() {
 
   return (
     <div className="alert" role="status">
-      <strong>GROSS BASIS ACTIVE — NOT BOARD-SAFE.</strong> Figures now include 3rd-party and procurement
-      pass-through. Historical margin drops ~6.3pp, live margin inflates ~1.3pp on a progress-timing artifact,
-      and the sector split no longer reconciles to Orders won. Return to SO before anything leaves this screen.
+      <strong>GROSS BASIS SELECTED — NOTHING ON SCREEN HAS CHANGED.</strong> No figure here is split by basis:
+      backlog and margin are built from budgeted hours, so they are services-only whatever this switch says, and
+      orders are the purchase-order value as entered. Procurement is recorded, but in a JSON column no query reads
+      yet — the Headline footnote reports how much.
     </div>
   )
 }

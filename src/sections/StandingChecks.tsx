@@ -1,145 +1,236 @@
 import { useState } from 'react'
+import { dashboardApi } from '../api/dashboard'
 import { Pill, SectionHead } from '../components/Panel'
-import {
-  PENDING_PO,
-  PENDING_PO_TOTAL,
-  UNPLANNED_INVOICING,
-  renderCell,
-  type CheckRow,
-} from '../data/console'
+import type { CheckSeverity, ChecksResponse } from '../contracts/dashboard'
+import { useApi } from '../hooks/useApi'
 
 type TabId = 'po' | 'inv'
 
-function CheckRows({ rows }: { rows: CheckRow[] }) {
+const num = (n: number) => Math.round(n).toLocaleString('en-GB')
+
+const SEVERITY: Record<CheckSeverity, { label: string; tone: 'red' | 'amber' | 'grey' }> = {
+  escalate: { label: 'Escalate', tone: 'red' },
+  rule_needed: { label: 'Rule needed', tone: 'amber' },
+  confirm: { label: 'Confirm', tone: 'amber' },
+  review: { label: 'Review', tone: 'grey' },
+}
+
+/** Ribbon colour matches the severity, so the table scans down the left edge. */
+const RIBBON: Record<CheckSeverity, string> = {
+  escalate: 'rib-red',
+  rule_needed: 'rib-amber',
+  confirm: 'rib-amber',
+  review: 'rib-grey',
+}
+
+function date(iso: string | null) {
+  if (!iso) return '—'
+  const [y, m, d] = iso.slice(0, 10).split('-')
+  return `${d}/${m}/${y}`
+}
+
+function PendingPoTable({ data }: { data: ChecksResponse['pendingPo'] }) {
+  const shown = data.rows.filter((r) => !r.suppressed)
+  const suppressed = data.rows.filter((r) => r.suppressed)
+
   return (
     <>
-      {rows.map((r) => (
-        <tr className={`rib rib-${r.ribbon}`} key={r.code.v}>
-          <td>
-            <span className={r.code.illus ? 'code illus' : 'code'} title={r.code.illus ? 'Illustrative' : undefined}>
-              {r.code.v}
-            </span>
-          </td>
-          <td>
-            {renderCell(r.project)}
-            {r.note && <span className="rownote">{r.note}</span>}
-          </td>
-          {r.figures.map((f, i) => (
-            <td className="n" key={i}>
-              {renderCell(f)}
-            </td>
-          ))}
-          <td>
-            <Pill label={r.pill.label} tone={r.pill.tone} />
-          </td>
-        </tr>
-      ))}
+      <div className="scroll">
+        <table className="tbl">
+          <thead>
+            <tr>
+              <th style={{ width: 96 }}>Code</th>
+              <th>Project</th>
+              <th className="n">Budget</th>
+              <th className="n">Actual</th>
+              <th className="n">Awarded</th>
+              <th style={{ width: 110 }}>Start date</th>
+              <th style={{ width: 120 }}>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {shown.map((r) => (
+              <tr className={`rib ${RIBBON[r.severity]}`} key={r.code}>
+                <td>
+                  <span className="code">{r.code}</span>
+                </td>
+                <td>{r.name}</td>
+                <td className="n">{num(r.budget)}</td>
+                <td className="n">{num(r.actual)}</td>
+                <td className="n">{r.awarded}</td>
+                <td className="n">{date(r.startDate)}</td>
+                <td>
+                  <Pill label={SEVERITY[r.severity].label} tone={SEVERITY[r.severity].tone} />
+                </td>
+              </tr>
+            ))}
+
+            <tr className="total">
+              <td colSpan={2}>Total exposure — {data.shownCount} projects</td>
+              <td className="n">{num(data.totals.budget)}</td>
+              <td className="n">{num(data.totals.actual)}</td>
+              <td className="n">—</td>
+              <td />
+              <td />
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div className="panel-foot">
+        {suppressed.length > 0 && (
+          <>
+            <Pill label={`Suppressed ${suppressed.length}`} tone="green" />
+            &nbsp;
+            {suppressed.map((r) => `${r.code} — ${r.suppressedBecause}`).join('; ')}. Suppressions are counted and
+            shown on the face of the report, never removed silently.
+            <br />
+          </>
+        )}
+        <strong>Rule:</strong> {data.rule}
+      </div>
+    </>
+  )
+}
+
+function UnplannedTable({ data }: { data: ChecksResponse['unplannedInvoicing'] }) {
+  const held = data.withoutGateCount - data.rows.length
+  // projects the old planned-month-only rule flagged that do have a forecast
+  const movedOn = data.planOnlyCount - data.rows.length
+
+  return (
+    <>
+      <div className="scroll">
+        <table className="tbl">
+          <thead>
+            <tr>
+              <th style={{ width: 96 }}>Code</th>
+              <th>Project</th>
+              <th className="n">Invoiced</th>
+              <th className="n">Awarded</th>
+              <th className="n">Outstanding</th>
+              <th className="n">Budget</th>
+              <th className="n">Actual</th>
+              <th style={{ width: 90 }}>Also §6.1</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.rows.map((r) => (
+              <tr className="rib rib-amber" key={r.code}>
+                <td>
+                  <span className="code">{r.code}</span>
+                </td>
+                <td>{r.name}</td>
+                <td className="n">{r.invoicedPct.toFixed(0)}%</td>
+                <td className="n">{num(r.awarded)}</td>
+                <td className="n">{num(r.outstanding)}</td>
+                <td className="n">{num(r.budget)}</td>
+                <td className="n">{num(r.actual)}</td>
+                <td>
+                  <Pill label={r.alsoPendingPo ? 'Yes' : 'No'} tone={r.alsoPendingPo ? 'amber' : 'grey'} />
+                </td>
+              </tr>
+            ))}
+
+            <tr className="total">
+              <td colSpan={4}>Outstanding across {data.rows.length} projects</td>
+              <td className="n">{num(data.outstandingTotal)}</td>
+              <td />
+              <td />
+              <td />
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div className="panel-foot">
+        <strong>Rule:</strong> {data.rule}
+        {held > 0 && (
+          <>
+            {' '}
+            Without the money-outstanding gate the rule returns <strong className="num">
+              {data.withoutGateCount}
+            </strong>{' '}
+            rows — the other {held} have finished invoicing and owe nothing.{' '}
+            <strong>Open decision:</strong> should the gate stay?
+          </>
+        )}
+        {/* The correction is disclosed rather than showing up as an unexplained
+            drop in the row count between one run and the next. */}
+        {movedOn > 0 && (
+          <>
+            <br />
+            <strong>Reading the planned month alone returned {data.planOnlyCount} rows.</strong> The other{' '}
+            {movedOn} have an invoice scheduled — their milestone was moved, and the later date sits in{' '}
+            <code>forecast_month</code> rather than <code>month</code>. Both columns are populated on every
+            milestone and disagree on 92 of them.
+          </>
+        )}
+      </div>
     </>
   )
 }
 
 export function StandingChecks() {
   const [tab, setTab] = useState<TabId>('po')
+  const state = useApi(() => dashboardApi.checks())
+
+  const poCount = state.status === 'ready' ? state.data.pendingPo.shownCount : null
+  const invCount = state.status === 'ready' ? state.data.unplannedInvoicing.rows.length : null
 
   return (
     <section className="sec fade" id="checks" style={{ animationDelay: '.15s' }}>
       <SectionHead
         title="Standing checks"
         clause="§6.1 · §6.2"
-        right="Full mechanical output — no triage step exists in the pipeline"
+        /* "full output" is a claim about this table, so it counts what the rule
+           returned rather than asserting nothing was dropped */
+        right={
+          state.status === 'ready'
+            ? `Full mechanical output — all ${state.data.pendingPo.rows.length + state.data.unplannedInvoicing.rows.length} rows shown or named, no triage step exists`
+            : 'Full mechanical output — no triage step exists in the pipeline'
+        }
       />
 
       <div className="panel">
         <div className="tabs" role="tablist">
           <button
-            id="tabPO"
             role="tab"
             type="button"
             aria-selected={tab === 'po'}
-            aria-controls="panePO"
             onClick={() => setTab('po')}
           >
-            Pending PO <span className="count">23</span>
+            Pending PO {poCount !== null && <span className="count">{poCount}</span>}
           </button>
           <button
-            id="tabINV"
             role="tab"
             type="button"
             aria-selected={tab === 'inv'}
-            aria-controls="paneINV"
             onClick={() => setTab('inv')}
           >
-            Unplanned invoicing <span className="count q">2</span>
+            Unplanned invoicing {invCount !== null && <span className="count q">{invCount}</span>}
           </button>
         </div>
 
-        {tab === 'po' && (
-          <div id="panePO" role="tabpanel" aria-labelledby="tabPO">
-            <div className="scroll">
-              <table className="tbl">
-                <thead>
-                  <tr>
-                    <th style={{ width: 96 }}>Code</th>
-                    <th>Project</th>
-                    <th className="n">Budget</th>
-                    <th className="n">Actual</th>
-                    <th className="n">Awarded</th>
-                    <th style={{ width: 110 }}>Start date</th>
-                    <th style={{ width: 120 }}>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <CheckRows rows={PENDING_PO} />
-                  <tr className="total">
-                    <td colSpan={2}>{PENDING_PO_TOTAL.label}</td>
-                    {PENDING_PO_TOTAL.figures.map((f, i) => (
-                      <td className="n" key={i}>
-                        {renderCell(f)}
-                      </td>
-                    ))}
-                    <td />
-                    <td />
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <div className="panel-foot">
-              <Pill label="Suppressed 3" tone="green" /> &nbsp;Admin-only cost-centre splits 25120B / C / D, where
-              the PO genuinely sits at parent 25120. Suppressions are counted and shown on the face of the report,
-              never removed silently.
-            </div>
+        {state.status === 'loading' && (
+          <div className="panel-body">
+            <p style={{ margin: 0, color: 'var(--color-ink-3)' }}>Running the checks…</p>
           </div>
         )}
 
-        {tab === 'inv' && (
-          <div id="paneINV" role="tabpanel" aria-labelledby="tabINV">
-            <div className="scroll">
-              <table className="tbl">
-                <thead>
-                  <tr>
-                    <th style={{ width: 96 }}>Code</th>
-                    <th>Project</th>
-                    <th className="n">Invoiced</th>
-                    <th className="n">Awarded</th>
-                    <th className="n">Budget</th>
-                    <th className="n">Actual</th>
-                    <th style={{ width: 110 }}>Also §6.1</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <CheckRows rows={UNPLANNED_INVOICING} />
-                </tbody>
-              </table>
-            </div>
-            <div className="panel-foot">
-              Overlap with pending-PO is expected and labelled per row rather than reported twice.{' '}
-              <strong>Open decision:</strong> should a zero-value gate apply here? A project with nothing awarded,
-              budgeted or spent currently trips this on a technicality — 0% of nothing.
-            </div>
+        {state.status === 'error' && (
+          <div className="panel-body">
+            <div className="gate-err">{state.message}</div>
           </div>
         )}
+
+        {state.status === 'ready' &&
+          (tab === 'po' ? (
+            <PendingPoTable data={state.data.pendingPo} />
+          ) : (
+            <UnplannedTable data={state.data.unplannedInvoicing} />
+          ))}
       </div>
     </section>
   )
 }
-

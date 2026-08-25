@@ -2,39 +2,24 @@ import { createContext, useContext } from 'react'
 
 export type Basis = 'SO' | 'SP'
 
-type FigureKey = 'orders' | 'backlog' | 'marginLive' | 'marginHist' | 'sectorTotal'
-type TagKey = 'orders' | 'backlog' | 'margin'
-
-/** Figures that move when the reporting basis changes. */
-export const FIGURES: Record<Basis, Record<FigureKey, string>> = {
-  SO: {
-    orders: '£1,399,008',
-    backlog: '£1,096,400',
-    marginLive: '21.4%',
-    marginHist: '18.9%',
-    sectorTotal: '£1,399,008',
-  },
-  SP: {
-    orders: '£1,683,912',
-    backlog: '£1,412,700',
-    marginLive: '22.7%',
-    marginHist: '12.6%',
-    sectorTotal: '£1,683,912',
-  },
-}
-
-/** Chip labels that move with the basis. */
-export const TAGS: Record<Basis, Record<TagKey, string>> = {
-  SO: { orders: 'EX-PROC', backlog: 'SO', margin: 'SO' },
-  SP: { orders: 'GROSS', backlog: 'S+P', margin: 'S+P' },
-}
-
+/**
+ * The reporting basis: services-only against gross.
+ *
+ * The toggle carries no figures of its own. It used to hold a hardcoded pair of
+ * totals per basis — the wireframe's numbers — which nothing ever read: the
+ * sections take every figure from the API, and no query splits procurement out.
+ * Flipping it therefore changes no number on the screen, and the state below is
+ * all that is honestly available: which basis is selected, and whether it is the
+ * gross one.
+ *
+ * The split itself is buildable — `projects.procurement_global` holds £1,368,140
+ * across 72 live projects — but it is a change to the KPI queries, not to a
+ * lookup table beside the switch.
+ */
 export type BasisValue = {
   basis: Basis
   setBasis: (b: Basis) => void
-  figures: Record<FigureKey, string>
-  tags: Record<TagKey, string>
-  /** true on the gross basis — drives the not-board-safe alert and red chips */
+  /** true on the gross basis — drives the not-board-safe notice */
   isGross: boolean
 }
 

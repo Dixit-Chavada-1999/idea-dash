@@ -215,15 +215,6 @@
     letter-spacing: 0.01em;
     color: #fff;
   }
-  .cmd .run {
-    font-family: var(--font-mono);
-    font-size: 11.5px;
-    color: var(--color-on-dark-2);
-    border: 1px solid var(--color-shell-3);
-    padding: 5px 9px;
-    border-radius: 2px;
-    background: var(--color-shell);
-  }
   .cmd .spacer {
     margin-left: auto;
   }
@@ -394,12 +385,19 @@
     margin-right: 7px;
     vertical-align: 2px;
   }
-  .dot.ok {
+  /* Namespaced, not `.dot.ok` — a bare state word collides with anything else
+     using it. `.dot.alert` matched the gross-basis `.alert` bar and inherited
+     its padding, turning a 8px dot into a red slab. */
+  .dot-ok {
     background: var(--color-green);
   }
-  .dot.watch {
+  .dot-watch {
     background: var(--color-amber);
   }
+  .dot-alert {
+    background: var(--color-red);
+  }
+
 
   /* ---------------- KPI BOARD ---------------- */
   .kpis {
@@ -412,6 +410,36 @@
   .kpi {
     background: var(--color-panel);
     padding: 0;
+  }
+  /* IDEA's own red/amber/green, from kpi_thresholds. A dot beside the title and
+     the band spelled out under the figure, so the colour is never the only carrier. */
+  .rag {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    margin-left: auto;
+    flex: none;
+  }
+  /* the chip carries its own margin-left:auto; two of them would split the free
+     space and strand the dot mid-header, so the dot takes the push instead */
+  .rag + .chip {
+    margin-left: 0;
+  }
+  .rag-green {
+    background: #17795a;
+  }
+  .rag-amber {
+    background: #e8940c;
+  }
+  .rag-red {
+    background: #b3261e;
+  }
+  .rag-note {
+    margin-top: 9px;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    line-height: 1.5;
+    color: var(--color-ink-3);
   }
   .kpi-hd {
     display: flex;
@@ -462,6 +490,9 @@
     font-size: 38px;
     letter-spacing: -0.035em;
     line-height: 1;
+  }
+  .big.muted {
+    color: var(--color-ink-3);
   }
   .meta {
     margin-top: 9px;
@@ -823,9 +854,20 @@
     font-size: 11.5px;
     color: var(--color-on-dark-2);
   }
+  /*
+   * auto-fit rather than a fixed count: the card list is authored and has
+   * already grown from five to six, and a hardcoded column count strands the
+   * last card alone on a row every time one is added.
+   *
+   * The 440px floor is doing the real work. Each card now carries a block of
+   * measured evidence under the question, and at the narrow tracks a smaller
+   * floor allows that text wraps to six or seven lines against a two-line
+   * question. Wide tracks keep the two in proportion, and at the common desktop
+   * width the six cards land three and three.
+   */
   .openq-grid {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(440px, 1fr));
     gap: 1px;
     background: var(--color-shell-3);
   }
@@ -852,6 +894,18 @@
   .q .qb {
     font-size: 11.5px;
     line-height: 1.5;
+    color: var(--color-on-dark-2);
+  }
+  /* Live evidence under a decision. Mono and rule-marked so it reads as measured
+     rather than as more of the authored question above it. */
+  .q .qe {
+    display: block;
+    margin-top: 9px;
+    padding-top: 8px;
+    border-top: 1px solid rgb(255 255 255 / 12%);
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    line-height: 1.55;
     color: var(--color-on-dark-2);
   }
 
@@ -1497,6 +1551,162 @@
     }
   }
 
+  /* signup: two name fields side by side */
+  .name-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .name-row .field + .field {
+    margin-top: 0;
+  }
+  /* the field after the name row is a sibling of a div, not of a .field */
+  .name-row + .field {
+    margin-top: 14px;
+  }
+  .field-hint {
+    display: block;
+    margin-top: 5px;
+    font-size: 11px;
+    color: var(--color-ink-3);
+  }
+
+  /* centred dialog, reusing the drawer's backdrop */
+  .modal {
+    background: var(--color-panel);
+    border: 1px solid var(--color-rule);
+    border-top: 3px solid var(--color-amber);
+    width: min(400px, 100%);
+    margin: auto;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .drawer-back:has(.modal) {
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  /* lead paragraph above a gate form */
+  .gate-lead {
+    margin: 0 0 14px;
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: var(--color-ink-2);
+  }
+  .gate-link {
+    display: block;
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--color-blue);
+    text-decoration: none;
+  }
+  .gate-link:hover {
+    text-decoration: underline;
+  }
+  .gate-link.right {
+    text-align: right;
+    margin-top: 8px;
+  }
+  .gate-actions {
+    display: grid;
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .gate-actions .gate-btn {
+    margin-top: 0;
+    display: block;
+    text-align: center;
+    text-decoration: none;
+    line-height: 1.2;
+  }
+  .gate-btn.ghost {
+    background: transparent;
+    color: var(--color-ink-2);
+    border: 1px solid var(--color-rule);
+  }
+  .gate-btn.ghost:hover {
+    background: #f2f5f8;
+    color: var(--color-ink);
+  }
+
+  /* inline call-recording form in the movements table */
+  .classify {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+  .classify select,
+  .classify input {
+    font-family: var(--font-sans);
+    font-size: 12px;
+    color: var(--color-ink);
+    background: #fff;
+    border: 1px solid var(--color-rule);
+    border-radius: 2px;
+    padding: 4px 6px;
+  }
+  .classify input {
+    flex: 1;
+    min-width: 160px;
+  }
+  .classify select:focus,
+  .classify input:focus {
+    outline: 0;
+    border-color: var(--color-blue);
+  }
+  .classify-err {
+    flex-basis: 100%;
+    font-size: 11px;
+    color: var(--color-red);
+  }
+  .auto-tag {
+    margin-left: 6px;
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    color: var(--color-ink-3);
+  }
+
+  /* metrics a panel cannot produce, named under the table */
+  .unavailable {
+    padding: 13px 14px;
+    background: #f7f9fb;
+    border-top: 1px solid var(--color-rule-2);
+  }
+  .unavailable .lead {
+    font-family: var(--font-disp);
+    font-weight: 700;
+    font-size: 9.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-ink-3);
+    display: block;
+    margin-bottom: 9px;
+  }
+  .unavailable-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 4px 0;
+    font-size: 11.5px;
+    line-height: 1.45;
+  }
+  .unavailable-row .k {
+    flex: 0 0 150px;
+    font-family: var(--font-disp);
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--color-ink-2);
+  }
+  .unavailable-row .r {
+    flex: 1;
+    min-width: 220px;
+    color: var(--color-ink-3);
+  }
+
   /* ---------------- SIGN-IN GATE ---------------- */
   .gate {
     min-height: 100vh;
@@ -1505,6 +1715,16 @@
     background: var(--color-shell);
     padding: 32px 20px;
   }
+  .gate .tabs {
+    background: var(--color-shell);
+    padding: 0 8px;
+  }
+  .gate .tabs button {
+    flex: 1;
+    justify-content: center;
+    letter-spacing: 0.09em;
+  }
+
   .gate-inner {
     width: 100%;
     max-width: 388px;
