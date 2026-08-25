@@ -4,8 +4,13 @@
  * `credentials: 'include'` is what carries the httpOnly session cookie. In dev
  * the Vite proxy makes /api same-origin; in production VITE_API_URL points at
  * the API host and CORS must allow this origin with credentials.
+ *
+ * VITE_API_URL is read at **build** time, not run time — Vite compiles it into
+ * the bundle. Left blank, every call goes to the page's own origin, which in
+ * production is the static host and answers 404. Any trailing slash is stripped:
+ * the paths below already start with one.
  */
-const BASE = import.meta.env.VITE_API_URL ?? ''
+const BASE = (import.meta.env.VITE_API_URL ?? '').replace(/\/+$/, '')
 
 export class ApiError extends Error {
   readonly status: number
