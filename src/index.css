@@ -855,19 +855,22 @@
     color: var(--color-on-dark-2);
   }
   /*
-   * auto-fit rather than a fixed count: the card list is authored and has
-   * already grown from five to six, and a hardcoded column count strands the
-   * last card alone on a row every time one is added.
+   * Three columns, stated rather than inferred.
    *
-   * The 440px floor is doing the real work. Each card now carries a block of
-   * measured evidence under the question, and at the narrow tracks a smaller
-   * floor allows that text wraps to six or seven lines against a two-line
-   * question. Wide tracks keep the two in proportion, and at the common desktop
-   * width the six cards land three and three.
+   * This was auto-fit with a 440px floor, on the reasoning that a fixed count
+   * strands the last card when the list grows. What it actually did was let the
+   * viewer's screen decide: 440px × 3 needs ~1320px of grid, and display scaling
+   * puts a common 1920px monitor under that, so the six cards fell two and two
+   * and two on the machines they are read on.
+   *
+   * Six cards over three columns is two clean rows, which is what the previous
+   * comment said it wanted. The narrower track wraps the evidence line further,
+   * and that is the trade being made deliberately here. Add a seventh card and
+   * this needs revisiting — the ladder below already handles narrow screens.
    */
   .openq-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(440px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 1px;
     background: var(--color-shell-3);
   }
