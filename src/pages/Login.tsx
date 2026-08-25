@@ -6,6 +6,20 @@ import { PasswordField } from '../components/PasswordField'
 
 type Mode = 'signin' | 'signup'
 
+/**
+ * Whether visitors may create their own account.
+ *
+ * Closed: an account is access to every figure the console reports, so accounts
+ * are made deliberately — `npm run seed:admin` on the API — rather than by
+ * whoever finds this page. The sign-up path below is kept working rather than
+ * deleted, so re-opening it is this one line.
+ *
+ * This flag only decides what is *shown*. The API refuses /auth/register with
+ * REGISTRATION_CLOSED unless ALLOW_REGISTRATION=true, and that is the real gate:
+ * a hidden tab stops nobody who can post to the URL directly.
+ */
+const REGISTRATION_OPEN = false
+
 export default function Login() {
   const { signIn, signUp } = useAuth()
   const [mode, setMode] = useState<Mode>('signin')
@@ -16,7 +30,7 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  const isSignup = mode === 'signup'
+  const isSignup = REGISTRATION_OPEN && mode === 'signup'
 
   function switchMode(next: Mode) {
     setMode(next)
@@ -57,24 +71,31 @@ export default function Login() {
     >
 
         <div className="panel">
-          <div className="tabs" role="tablist">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={!isSignup}
-              onClick={() => switchMode('signin')}
-            >
-              Sign in
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={isSignup}
-              onClick={() => switchMode('signup')}
-            >
-              Create account
-            </button>
-          </div>
+          {REGISTRATION_OPEN ? (
+            <div className="tabs" role="tablist">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={!isSignup}
+                onClick={() => switchMode('signin')}
+              >
+                Sign in
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={isSignup}
+                onClick={() => switchMode('signup')}
+              >
+                Create account
+              </button>
+            </div>
+          ) : (
+            /* one tab is not a tab strip — the panel keeps its header instead */
+            <div className="panel-hd">
+              <h3>Sign in</h3>
+            </div>
+          )}
 
           <div className="panel-body">
             <form onSubmit={onSubmit} noValidate>

@@ -12,6 +12,7 @@ const MESSAGES: Record<string, string> = {
   INVALID_CREDENTIALS: 'Those credentials are not recognised.',
   ACCOUNT_DISABLED: 'This account has been disabled. Contact an administrator.',
   EMAIL_TAKEN: 'An account already exists for that email address.',
+  REGISTRATION_CLOSED: 'Accounts are created by an administrator. Ask for one to be set up.',
   WEAK_PASSWORD: 'Password is too short — use at least 8 characters.',
   VALIDATION: 'Check the details entered and try again.',
   NETWORK: 'Could not reach the server. Is the API running?',
