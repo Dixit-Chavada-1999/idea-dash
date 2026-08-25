@@ -27,3 +27,9 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# Committed on purpose. VITE_* values are compiled into the browser bundle, so
+# nothing here can be a secret — and the build runs on Vercel, which only ever
+# sees what is in the repo. Ignoring this file is how the production build ended
+# up calling its own origin and answering 404.
+!.env.production
