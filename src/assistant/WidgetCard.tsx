@@ -1,21 +1,23 @@
-import type { Widget } from './types'
+import { useState } from 'react'
+import type { Widget } from '../contracts/assistant'
 
-const fmt = {
-  money: (v: number) => `£${v.toLocaleString('en-GB')}`,
-  hours: (v: number) => v.toLocaleString('en-GB'),
-  count: (v: number) => v.toLocaleString('en-GB'),
-}
+const fmt = (v: number, unit: string) =>
+  unit === 'money'
+    ? `£${Math.round(v).toLocaleString('en-GB')}`
+    : unit === 'percent'
+      ? `${v.toFixed(1)}%`
+      : Math.round(v).toLocaleString('en-GB')
 
 /** Horizontal bars — readable at any widget width, unlike a vertical axis. */
 function Bars({ w }: { w: Extract<Widget, { kind: 'bar' }> }) {
-  const max = Math.max(...w.bars.map((b) => b.value))
+  const max = Math.max(...w.bars.map((b) => b.value), 1)
   return (
     <>
       {w.bars.map((b) => (
         <div className="hbar" key={b.label}>
           <div className="l">
             <span className="k">{b.label}</span>
-            <span className="v">{fmt[w.format](b.value)}</span>
+            <span className="v">{fmt(b.value, w.format)}</span>
           </div>
           <div className="t">
             <div
@@ -30,71 +32,89 @@ function Bars({ w }: { w: Extract<Widget, { kind: 'bar' }> }) {
   )
 }
 
-function Line({ w }: { w: Extract<Widget, { kind: 'line' }> }) {
-  const H = 92
-  const W = 320
-  const PAD = 4
-  const vals = w.points.map((p) => p.value)
-  const min = Math.min(...vals)
-  const max = Math.max(...vals)
-  const span = max - min || 1
+/**
+ * Ten, because a table under a chat answer is read as an answer rather than
+ * browsed as a report. Nine hundred rows dumped under a question buries the
+ * findings, the follow-up chips and every other widget below a scroll nobody
+ * asked for.
+ */
+const PAGE_SIZE = 10
 
-  const pts = w.points
-    .map((p, i) => {
-      const x = PAD + (i / (w.points.length - 1)) * (W - PAD * 2)
-      const y = PAD + (1 - (p.value - min) / span) * (H - PAD * 2)
-      return `${x.toFixed(1)},${y.toFixed(1)}`
-    })
-    .join(' ')
+/**
+ * Rows, one page at a time.
+ *
+ * Every cell arrives already formatted — currency, dates and rounding are the
+ * server's, so this renders strings and does no arithmetic. The header stays
+ * put while the body scrolls, because a list is read by scanning down one
+ * column and a header that scrolls away makes that impossible.
+ *
+ * Paging is local to the page: the server has already sent every row it is
+ * going to send, and the count beside the table says when that is fewer than
+ * matched. Fetching per page would mean re-running the query for each click,
+ * which for a figure quoted in a meeting could quietly return different rows
+ * than the ones the question was answered with.
+ */
+function Rows({ w }: { w: Extract<Widget, { kind: 'table' }> }) {
+  const [page, setPage] = useState(0)
 
-  const last = w.points[w.points.length - 1]
+  // a redeployed answer or a new question can shorten the list under a page
+  // that no longer exists; clamping on render beats an effect that flashes
+  const pages = Math.max(1, Math.ceil(w.rows.length / PAGE_SIZE))
+  const current = Math.min(page, pages - 1)
+  const start = current * PAGE_SIZE
+  const shown = w.rows.slice(start, start + PAGE_SIZE)
+
+  if (w.rows.length === 0) {
+    return <div className="wg-note">No rows matched.</div>
+  }
 
   return (
     <>
-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} preserveAspectRatio="none" aria-hidden="true">
-        <polygon points={`${PAD},${H - PAD} ${pts} ${W - PAD},${H - PAD}`} fill="#E7F1F8" />
-        <polyline
-          points={pts}
-          fill="none"
-          stroke="#1D6FA5"
-          strokeWidth="1.8"
-          vectorEffect="non-scaling-stroke"
-        />
-      </svg>
-      <div className="wg-note">
-        {w.points[0].label} → {last.label} · latest{' '}
-        <strong className="num">{fmt[w.format](last.value)}</strong>
-      </div>
-    </>
-  )
-}
-
-function Table({ w }: { w: Extract<Widget, { kind: 'table' }> }) {
-  return (
-    <div className="scroll">
-      <table className="tbl">
-        <thead>
-          <tr>
-            {w.columns.map((c) => (
-              <th key={c.key} className={c.numeric ? 'n' : undefined}>
-                {c.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {w.rows.map((r, i) => (
-            <tr key={i}>
+      <div className="wg-table">
+        <table>
+          <thead>
+            <tr>
               {w.columns.map((c) => (
-                <td key={c.key} className={c.numeric ? 'n' : undefined}>
-                  {c.key === 'code' ? <span className="code">{r[c.key]}</span> : r[c.key]}
-                </td>
+                <th key={c.key} className={c.align === 'right' ? 'r' : undefined}>
+                  {c.label}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {shown.map((row, i) => (
+              // rows carry no id of their own; order is the server's and is stable
+              <tr key={start + i}>
+                {w.columns.map((c) => (
+                  <td key={c.key} className={c.align === 'right' ? 'r' : undefined}>
+                    {row[c.key] ?? '—'}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {pages > 1 && (
+        <div className="wg-pager">
+          <button type="button" onClick={() => setPage(current - 1)} disabled={current === 0}>
+            prev
+          </button>
+          <span>
+            {/* the row range, not just the page number — "11–20 of 946" says how
+                far through the list a reader is; "page 2 of 95" does not */}
+            {(start + 1).toLocaleString('en-GB')}–{Math.min(start + PAGE_SIZE, w.rows.length).toLocaleString('en-GB')} of{' '}
+            {w.rows.length.toLocaleString('en-GB')}
+          </span>
+          <button type="button" onClick={() => setPage(current + 1)} disabled={current >= pages - 1}>
+            next
+          </button>
+        </div>
+      )}
+
+      {w.note && <div className="wg-note">{w.note}</div>}
+    </>
   )
 }
 
@@ -104,8 +124,17 @@ type Props = {
   onShowQuery: (w: Widget) => void
 }
 
+/**
+ * One widget.
+ *
+ * The wireframe's header carried a "✓ verified" button and a csv export, both
+ * decorative. The tick claimed the figure had been re-aggregated and matched
+ * against an independent count, which nothing did; it is gone rather than
+ * reworded, because a verification badge that means nothing is worse than none.
+ * What replaced it is `query`, which now opens the actual audit trail.
+ */
 export function WidgetCard({ widget, flash, onShowQuery }: Props) {
-  // a 3-column card cannot hold three labelled buttons without wrapping the header
+  // a 3-column card cannot hold labelled buttons without wrapping the header
   const tight = widget.w <= 4
 
   return (
@@ -118,37 +147,33 @@ export function WidgetCard({ widget, flash, onShowQuery }: Props) {
         <h3>{widget.title}</h3>
         {widget.chip && <span className="chip plain">{widget.chip}</span>}
         <span className="tools">
-          {/* on a narrow card the verify signal moves into the body, so the title fits */}
-          {!tight && (
-            <button type="button" className="ok" title="Re-aggregated and matched an independent count">
-              ✓ verified
-            </button>
-          )}
-          <button type="button" onClick={() => onShowQuery(widget)} title="Show the query behind this number">
+          <button
+            type="button"
+            onClick={() => onShowQuery(widget)}
+            className="tip-left"
+            data-tip="Show how this figure was produced — the query, the population and every step that ran"
+            aria-label="Show how this figure was produced"
+          >
             query
           </button>
-          {!tight && (
-            <button type="button" title="Export the rows behind this widget">
-              csv
-            </button>
-          )}
         </span>
       </div>
 
       <div className={widget.kind === 'kpi' ? 'wg-body wg-kpi' : 'wg-body'}>
-        {widget.kind === 'kpi' && (
+        {widget.kind === 'kpi' ? (
           <>
             <div className="v">{widget.value}</div>
-            <div className="m">
-              {widget.delta && <span className={`delta ${widget.delta.dir}`}>{widget.delta.text}</span>}
-              {widget.note && <span>{widget.note}</span>}
-            </div>
-            {tight && <div className="wg-verified">✓ verified · independent count</div>}
+            {widget.note && (
+              <div className="m">
+                <span>{widget.note}</span>
+              </div>
+            )}
           </>
+        ) : widget.kind === 'table' ? (
+          <Rows w={widget} />
+        ) : (
+          <Bars w={widget} />
         )}
-        {widget.kind === 'bar' && <Bars w={widget} />}
-        {widget.kind === 'line' && <Line w={widget} />}
-        {widget.kind === 'table' && <Table w={widget} />}
       </div>
     </div>
   )

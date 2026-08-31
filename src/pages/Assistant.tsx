@@ -1,77 +1,100 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ChatPanel, type BotTurn, type Turn } from '../assistant/ChatPanel'
+import { assistantApi, type MetricsResponse } from '../api/assistant'
+import { ApiError } from '../api/client'
+import { ChatPanel, type Turn } from '../assistant/ChatPanel'
 import { DashboardCanvas } from '../assistant/DashboardCanvas'
-import { SCENARIOS, matchScenario } from '../assistant/scenarios'
 import { CommandBar } from '../components/CommandBar'
 import { Rail } from '../components/Rail'
+import type { AssistantAnswer } from '../contracts/assistant'
 
-/** Replace the last turn, which is always the bot turn being played back. */
-function patchLast(turns: Turn[], patch: (b: BotTurn) => BotTurn): Turn[] {
-  const last = turns[turns.length - 1]
-  if (!last || last.kind !== 'bot') return turns
-  return [...turns.slice(0, -1), patch(last)]
-}
-
+/**
+ * The assistant, answering from the reporting database.
+ *
+ * This page used to play back four scripted answers on a timer. Everything on
+ * it now comes from `POST /api/assistant/ask`: the figures, the step timings,
+ * the findings and the wording. Where the wireframe faked something it either
+ * became real or was removed — there is nothing left on this screen that claims
+ * more than the pipeline actually did.
+ */
 export default function Assistant() {
   const [turns, setTurns] = useState<Turn[]>([])
+  const [pending, setPending] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
+  const [meta, setMeta] = useState<MetricsResponse | null>(null)
+  const [model, setModel] = useState<string>('')
+  const [threadId, setThreadId] = useState<number | undefined>()
 
-  const last = turns[turns.length - 1]
-  const running = last?.kind === 'bot' && !last.finished
-
-  /**
-   * Playback driver. Advances one pipeline step per timeout so the timeline
-   * animates the way the real streaming agent does.
-   */
+  // the registry, so the suggestion chips can only offer answerable questions
   useEffect(() => {
-    const cur = turns[turns.length - 1]
-    if (!cur || cur.kind !== 'bot' || cur.finished) return
-
-    const steps = cur.scenario.steps
-    if (cur.completedSteps >= steps.length) {
-      const t = setTimeout(() => setTurns((ts) => patchLast(ts, (b) => ({ ...b, finished: true }))), 240)
-      return () => clearTimeout(t)
+    let cancelled = false
+    assistantApi
+      .metrics()
+      .then((m) => {
+        if (cancelled) return
+        setMeta(m)
+        setModel(m.defaultModel)
+      })
+      .catch(() => {
+        /* the chips are a convenience; the input works regardless */
+      })
+    return () => {
+      cancelled = true
     }
-
-    const t = setTimeout(
-      () =>
-        setTurns((ts) =>
-          patchLast(ts, (b) => ({ ...b, completedSteps: b.completedSteps + 1, stepStartedAt: Date.now() })),
-        ),
-      steps[cur.completedSteps].ms,
-    )
-    return () => clearTimeout(t)
-  }, [turns])
-
-  const send = useCallback(
-    (text: string) => {
-      if (running) return
-      const scenario = matchScenario(text)
-      setTurns((ts) => [
-        ...ts,
-        { kind: 'user', text },
-        { kind: 'bot', scenario, completedSteps: 0, stepStartedAt: Date.now(), finished: false },
-      ])
-    },
-    [running],
-  )
-
-  const stop = useCallback(() => {
-    setTurns((ts) => patchLast(ts, (b) => ({ ...b, finished: true })))
   }, [])
 
-  const loadThread = useCallback((index: number) => {
-    const scenario = SCENARIOS[index % SCENARIOS.length]
-    setTurns([
-      { kind: 'user', text: scenario.question },
-      {
-        kind: 'bot',
-        scenario,
-        completedSteps: scenario.steps.length,
-        stepStartedAt: Date.now(),
-        finished: true,
-      },
-    ])
+  const send = useCallback(
+    async (text: string) => {
+      const question = text.trim()
+      if (!question || pending) return
+
+      setTurns((t) => [...t, { kind: 'user', text: question }])
+      setPending(true)
+
+      try {
+        const answer = await assistantApi.ask({
+          question,
+          ...(threadId && { threadId }),
+          ...(model && { model }),
+        })
+        // one thread per conversation: the first answer names it, the rest join it
+        if (answer.threadId) setThreadId(answer.threadId)
+        setTurns((t) => [...t, { kind: 'bot', answer }])
+      } catch (err) {
+        const message =
+          err instanceof ApiError
+            ? err.code === 'LEGACY_UNAVAILABLE'
+              ? 'The reporting database is not reachable, so there is nothing to read.'
+              : err.code === 'TOO_MANY_REQUESTS'
+                ? 'Too many questions in a short time. Wait a moment and ask again.'
+                : (err.detail ?? err.code)
+            : 'Something went wrong.'
+        setTurns((t) => [...t, { kind: 'error', text: message }])
+      } finally {
+        setPending(false)
+      }
+    },
+    [model, pending, threadId],
+  )
+
+  /** Reopen a stored thread. The answers are replayed as they were, not re-run. */
+  const loadThread = useCallback(async (id: number) => {
+    try {
+      const { messages } = await assistantApi.thread(id)
+      const replayed: Turn[] = []
+      for (const m of messages) {
+        replayed.push({ kind: 'user', text: m.question })
+        if (m.answer) replayed.push({ kind: 'bot', answer: m.answer })
+      }
+      setTurns(replayed)
+      setThreadId(id)
+    } catch {
+      setTurns([{ kind: 'error', text: 'That conversation could not be loaded.' }])
+    }
+  }, [])
+
+  const newThread = useCallback(() => {
+    setTurns([])
+    setThreadId(undefined)
   }, [])
 
   // Shift+B collapses the chat, as in the reference implementation
@@ -88,8 +111,10 @@ export default function Assistant() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  // the newest finished turn owns the canvas
-  const shown = [...turns].reverse().find((t): t is BotTurn => t.kind === 'bot' && t.finished)
+  // the newest answered turn owns the canvas
+  const shown = [...turns]
+    .reverse()
+    .find((t): t is { kind: 'bot'; answer: AssistantAnswer } => t.kind === 'bot' && t.answer.ok)
 
   return (
     <div className="app">
@@ -100,14 +125,15 @@ export default function Assistant() {
         <div className={collapsed ? 'asst collapsed' : 'asst'}>
           <ChatPanel
             turns={turns}
-            running={running}
-            collapsed={collapsed}
-            onSend={send}
-            onStop={stop}
-            onToggleCollapse={() => setCollapsed((v) => !v)}
-            onLoadThread={loadThread}
+            pending={pending}
+            meta={meta}
+            model={model}
+            onModel={setModel}
+            onSend={(t) => void send(t)}
+            onLoadThread={(id) => void loadThread(id)}
+            onNewThread={newThread}
           />
-          <DashboardCanvas scenario={shown?.scenario ?? null} />
+          <DashboardCanvas answer={shown?.answer ?? null} />
         </div>
       </div>
     </div>

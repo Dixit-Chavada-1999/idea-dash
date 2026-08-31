@@ -1,19 +1,41 @@
 import type { BacklogBar } from '../data/backlog'
 
-const AXIS_MAX = 450_000
-const TICKS = [0, 150_000, 300_000, 450_000]
 const BASE_Y = 165
 const TOP_Y = 23
 const BAR_W = 70
 const FIRST_X = 68
 const GAP = 92
 
-const y = (v: number) => BASE_Y - (v / AXIS_MAX) * (BASE_Y - TOP_Y)
 const fmt = (v: number) => `${Math.round(v / 1000)}k`
 const centre = (i: number) => FIRST_X + i * GAP + BAR_W / 2
 
-/** Remaining budget by discipline. Scale is computed, so the bars stay honest. */
+/**
+ * Four ticks ending on a round number at or above the tallest bar.
+ *
+ * The axis was fixed at £450,000, which suited the gross budget it used to plot
+ * and does not suit the net backlog it plots now — the bars would sit in the
+ * lower two thirds of the frame, and a bucket above the ceiling would have been
+ * drawn off the top of the chart with nothing to say so.
+ */
+function axis(bars: BacklogBar[]): { max: number; ticks: number[] } {
+  const tallest = Math.max(0, ...bars.map((b) => b.value))
+  // three equal steps, each rounded up to 50k, so the labels stay readable
+  const step = Math.max(50_000, Math.ceil(tallest / 3 / 50_000) * 50_000)
+  const max = step * 3
+  return { max, ticks: [0, step, step * 2, max] }
+}
+
+/**
+ * Net backlog by discipline — budget less cost booked, as the server sends it.
+ *
+ * A negative value is possible where a discipline is overspent. The figure is
+ * kept as it is; only the bar geometry is clamped, so an overspent discipline
+ * shows an empty track rather than a rectangle drawn upside down.
+ */
 export function BacklogChart({ bars }: { bars: BacklogBar[] }) {
+  const { max: AXIS_MAX, ticks: TICKS } = axis(bars)
+  const y = (v: number) => BASE_Y - (Math.min(Math.max(0, v), AXIS_MAX) / AXIS_MAX) * (BASE_Y - TOP_Y)
+
   return (
     <svg viewBox="0 0 430 210" width="100%" height={210} role="img" aria-label="Backlog by discipline">
       {/* y-axis ticks */}

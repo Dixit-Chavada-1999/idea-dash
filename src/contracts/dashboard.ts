@@ -108,7 +108,17 @@ export type SectorSlice = { name: string; value: number; orders: number }
 
 export type BacklogBucket = {
   label: string
+  /**
+   * Net backlog: budget at the rate card less the cost booked to this bucket.
+   * Not clamped — a bucket carrying more cost than budget is overspent, and
+   * zeroing it would hide that and break the reconciliation to the headline.
+   */
   value: number
+  /** the budget before cost is taken off, so the panel can show what was netted */
+  grossValue: number
+  /** cost booked to this bucket's disciplines */
+  cost: number
+  /** budgeted hours less hours booked — the same subtraction in hours */
   hours: number
   /** which disciplines this bucket is made of — MECHANICAL is MEC + CAD */
   composedOf: string[]
@@ -134,9 +144,31 @@ export type PortfolioResponse = {
   }
   backlogByDiscipline: {
     buckets: BacklogBucket[]
+    /** net backlog across the four buckets only — `unbucketed` sits outside it */
     total: number
-    /** disciplines with budget outside the four buckets — never dropped silently */
+    /** disciplines outside the four buckets — never dropped silently. Net, like the buckets. */
     unbucketed: { initial: string; value: number }[]
+    /** the four buckets before cost, for the panel's "less cost booked" line */
+    grossTotal: number
+    costTotal: number
+    /**
+     * Cost booked to a timesheet row whose discipline is missing or no longer
+     * exists. Almost always zero; held out rather than folded into a bucket it
+     * cannot be shown to belong to, and subtracted in the tie check below.
+     */
+    unattributedCost: number
+    /**
+     * The Headline card's "Current backlog", so the panel can state the tie
+     * rather than leave two figures on one screen to be compared by eye.
+     */
+    headlineBacklog: number
+    /**
+     * That tie, checked: every part of this breakdown summed against
+     * `budgetValue − actualCost` over the same population, by a second query.
+     * A false means the breakdown and the headline have drifted — a discipline
+     * row lost from one side and not the other would do it.
+     */
+    tiesToHeadline: boolean
   }
   sectorSplit: {
     current: { label: string; slices: SectorSlice[]; total: number }

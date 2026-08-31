@@ -86,21 +86,29 @@ function BacklogPanel({ data }: { data: PortfolioResponse['backlogByDiscipline']
 
   return (
     <Panel
-      title="Backlog by discipline"
+      title="Net backlog by discipline"
       clause="§5.2"
-      /* Budgeted, not remaining: cost has not been taken off this total. The
-         headline card's "Current backlog" is the one with cost removed, and the
-         two sit on the same screen — calling both "remaining" invites reading a
-         £400k gap as a discrepancy. */
+      /* The same measure as the headline card's "Current backlog", broken down:
+         budget at the rate card less the cost already booked. It used to show
+         gross budget, which put a £400k gap between this panel and the card and
+         invited reading it as a discrepancy. The tie is now checked server-side
+         and reported below rather than asserted. */
       right={
         <>
-          Budgeted · <b>{gbp(data.total)}</b>
+          Net of cost · <b>{gbp(data.total)}</b>
         </>
       }
       foot={
         <>
+          <strong>
+            {gbp(data.grossTotal)} budgeted, less {gbp(data.costTotal)} booked.
+          </strong>{' '}
+          {data.tiesToHeadline
+            ? 'Every part of this breakdown sums to the headline card’s Current backlog exactly.'
+            : `These parts do NOT sum to the headline card, which reads ${gbp(data.headlineBacklog)} — a discipline has been lost from one side and not the other.`}{' '}
           {bundled.length > 0 && (
             <>
+              <br />
               <strong>
                 {bundled.map((b) => `${b.label} bundles ${b.composedOf.join(' + ')}`).join('; ')}.
               </strong>{' '}
@@ -113,7 +121,14 @@ function BacklogPanel({ data }: { data: PortfolioResponse['backlogByDiscipline']
               <br />
               <strong>Outside these buckets:</strong>{' '}
               {data.unbucketed.map((u) => `${u.initial} ${gbp(u.value)}`).join(', ')} — held back from the total
-              rather than folded in silently.
+              rather than folded in silently, and counted in the tie above.
+            </>
+          )}
+          {data.unattributedCost > 0 && (
+            <>
+              <br />
+              <strong>Unattributed cost:</strong> {gbp(data.unattributedCost)} of booked cost carries no
+              discipline, so it belongs to no bar. It is taken off the tie above, not off a bucket.
             </>
           )}
         </>
