@@ -1,4 +1,5 @@
 import { dashboardApi } from '../api/dashboard'
+import { OutcomePies } from '../components/OutcomePies'
 import { SectionHead } from '../components/Panel'
 import { Sparkline } from '../components/Sparkline'
 import type { Kpi } from '../contracts/dashboard'
@@ -33,12 +34,28 @@ function KpiCard({ kpi }: { kpi: Kpi }) {
           </div>
         )}
 
+        {/* Present on conversion only. The rate above is the headline; these say
+            what it is made of — and the amber wedge, fat on the current cohort
+            and absent on the lapsed one, is why the rate is measured over
+            decided enquiries rather than all of them. */}
+        {kpi.outcome && (
+          <OutcomePies
+            window={kpi.outcome.window}
+            current={kpi.outcome.current}
+            prior={kpi.outcome.prior}
+          />
+        )}
+
         {/* Only the date-stamped metrics carry a series. `plots` is always shown:
             three of them answer a different question from the figure above, and
             an unlabelled line would be read as that figure's own history. */}
         {kpi.series && (
           <>
-            <Sparkline values={kpi.series.values} />
+            <Sparkline
+              values={kpi.series.values}
+              keys={kpi.series.keys}
+              unit={kpi.series.unit}
+            />
             <div className="meta">
               <span>{kpi.series.plots}</span>
               <span>

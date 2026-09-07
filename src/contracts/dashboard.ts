@@ -5,6 +5,28 @@
 /** How confident we are in a figure — the UI shows uncertainty rather than hiding it. */
 export type Confidence = 'measured' | 'partial' | 'unavailable'
 
+/**
+ * One enquiry cohort, split the way IDEA split it.
+ *
+ * `won + pending + unsuccessful` is the whole cohort — the buckets are
+ * exhaustive by construction, which is what lets the pie be read as a whole.
+ * Both rates travel: `resolved` is the headline, `naive` is kept beside it
+ * because the distance between them is the lag this metric removes.
+ */
+export type OutcomeCohort = {
+  label: string
+  /** status Live or Closed — became real work */
+  won: number
+  /** status Enquiry or Proposal Sent — raised, not yet decided */
+  pending: number
+  /** status Didn’t Go Ahead, absorbing No Bid, No outcome and Lost */
+  unsuccessful: number
+  /** won / (won + unsuccessful) */
+  resolved: number | null
+  /** won / (won + pending + unsuccessful) */
+  naive: number | null
+}
+
 export type Kpi = {
   key: string
   label: string
@@ -40,6 +62,22 @@ export type Kpi = {
    * no history to rebuild from. Those KPIs carry no series rather than a drawn
    * one: a trend line is read as measured whether or not it is.
    */
+  /**
+   * The three-way outcome split behind a conversion figure (IDEA spec §3, §7).
+   *
+   * Present only on the conversion card. A single percentage cannot show why it
+   * moved: the same rate arises from a cohort that has mostly been decided and
+   * from one that has barely started, and those mean opposite things. The two
+   * cohorts travel together so the card can draw them side by side, current
+   * against the prior-year equivalent, in IDEA's own semantic colours.
+   */
+  outcome?: {
+    /** the window the current cohort covers, e.g. 'Mar 2026 → Sep 2026' */
+    window: string
+    current: OutcomeCohort
+    prior: OutcomeCohort
+  }
+
   series?: {
     /**
      * What the points plot.
@@ -55,6 +93,18 @@ export type Kpi = {
     label: string
     /** one point per month, oldest first; gaps are real zeroes */
     values: number[]
+    /**
+     * The month each value belongs to, e.g. 'Aug 2025' — same length and order
+     * as `values`.
+     *
+     * Carried rather than derived on the client from `label`. IDEA asked to see
+     * the year and month on hover, and reconstructing twelve months by parsing
+     * a range string is a second implementation of the window that can drift
+     * from the one the figures were actually measured over.
+     */
+    keys: string[]
+    /** how to format a value in a tooltip — the series is bare numbers */
+    unit: 'money' | 'count' | 'percent'
   }
 }
 
@@ -325,4 +375,28 @@ export type DecisionEvidence = {
 export type DecisionsResponse = {
   evidence: DecisionEvidence[]
   generatedAt: string
+}
+
+/* ---------------------------------------------------------- data sync */
+
+/**
+ * The result of one refresh of the reporting database from the CRM.
+ *
+ * Row counts before and after travel together deliberately. "Sync complete" is
+ * not an outcome anyone can check; "hours_worked 55,992 → 56,431" is. A table
+ * that arrives empty, or one that does not move at all, is visible here and
+ * nowhere else.
+ */
+export type SyncResponse = {
+  ok: boolean
+  startedAt: string
+  finishedAt: string
+  durationMs: number
+  /** size of the downloaded dump */
+  bytes: number
+  /** SQL statements executed — TRUNCATEs and INSERTs */
+  statements: number
+  tables: { name: string; rowsBefore: number; rowsAfter: number }[]
+  totalRowsBefore: number
+  totalRowsAfter: number
 }

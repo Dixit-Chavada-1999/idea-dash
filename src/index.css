@@ -285,6 +285,37 @@
   .btn:hover {
     background: var(--color-shell);
   }
+  .btn:disabled {
+    opacity: 0.55;
+    cursor: progress;
+  }
+
+  /* ---- sync: the button that rewrites the reporting database ---- */
+  .sync {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    /* the note can be a sentence; let it wrap the bar rather than stretch it */
+    flex-wrap: wrap;
+  }
+  .sync-note {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--color-on-dark-2);
+    max-width: 340px;
+  }
+  .sync-note.ok {
+    color: #2ecc8f;
+  }
+  /* Refused and failed are told apart on purpose: amber means the database was
+     left alone, red means the run got far enough to need checking. */
+  .sync-note.refused {
+    color: var(--color-amber);
+  }
+  .sync-note.failed {
+    color: #ff8a7a;
+  }
 
   /* alert bar */
   .alert {
@@ -529,6 +560,16 @@
   .spark {
     margin-top: 11px;
   }
+  /* Month markers: faint until the line is approached, so twelve dots do not
+     compete with the trend they sit on. The hover targets stay full-strength
+     regardless — they are transparent. */
+  .spark-dot {
+    opacity: 0;
+    transition: opacity 0.12s ease;
+  }
+  .spark:hover .spark-dot {
+    opacity: 0.85;
+  }
   .caveat {
     margin-top: 11px;
     font-size: 11.5px;
@@ -536,6 +577,78 @@
     color: var(--color-ink-2);
     border-left: 3px solid var(--color-amber);
     padding-left: 9px;
+  }
+
+  /* ---- conversion cohorts: prior against current, IDEA's spec §7 ---- */
+  .outcome {
+    margin-top: 14px;
+    padding-top: 13px;
+    border-top: 1px solid var(--color-rule-2);
+  }
+  .outcome-pies {
+    display: flex;
+    /* space-around rather than -between: on a narrow card the two pies read as
+       one comparison, not as two things pushed to opposite edges */
+    justify-content: space-around;
+    align-items: flex-start;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .outcome-cohort {
+    margin: 0;
+    text-align: center;
+    /*
+     * Held to roughly the pie's own width, deliberately.
+     *
+     * A figure sizes to its widest child, and the counts line beneath is the
+     * widest thing here — around 240px unwrapped. Two of those exceed the card,
+     * so the flex row wrapped and the second cohort dropped below the first,
+     * which destroys the comparison: these two pies only mean anything read
+     * side by side. Capping the width lets the counts wrap instead of the pies.
+     */
+    max-width: 152px;
+  }
+  .outcome-cohort figcaption {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 7px;
+  }
+  .outcome-cohort figcaption b {
+    font-family: var(--font-mono);
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+  .outcome-cohort figcaption span {
+    font-size: 11px;
+    color: var(--color-ink-2);
+  }
+  .outcome-counts {
+    font-family: var(--font-mono);
+    font-size: 10.5px !important;
+    line-height: 1.5;
+    color: var(--color-ink-3) !important;
+  }
+  .outcome-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    margin-top: 13px;
+    padding-top: 11px;
+    border-top: 1px solid var(--color-rule-2);
+  }
+  .outcome-legend span {
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--color-ink-2);
+  }
+  .outcome-window {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    color: var(--color-ink-3) !important;
   }
 
   /* ---------------- PANELS ---------------- */
