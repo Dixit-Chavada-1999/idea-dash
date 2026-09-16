@@ -87,6 +87,15 @@ function PendingPoTable({ data }: { data: ChecksResponse['pendingPo'] }) {
             <br />
           </>
         )}
+        {data.olderCount > 0 && (
+          <>
+            <Pill label={`+${data.olderCount} older`} tone="amber" />
+            &nbsp;
+            {data.olderCount} further won projects, started more than 12 months ago, also carry no PO — a
+            data-backfill gap rather than current exposure, so they're counted here and not listed row by row.
+            <br />
+          </>
+        )}
         <strong>Rule:</strong> {data.rule}
       </div>
     </>

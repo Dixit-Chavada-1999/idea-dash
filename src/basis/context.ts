@@ -3,18 +3,20 @@ import { createContext, useContext } from 'react'
 export type Basis = 'SO' | 'SP'
 
 /**
- * The reporting basis: services-only against gross.
+ * The reporting basis: services-only against gross (services + procurement).
  *
- * The toggle carries no figures of its own. It used to hold a hardcoded pair of
- * totals per basis — the wireframe's numbers — which nothing ever read: the
- * sections take every figure from the API, and no query splits procurement out.
- * Flipping it therefore changes no number on the screen, and the state below is
- * all that is honestly available: which basis is selected, and whether it is the
- * gross one.
+ * The toggle carries no figures of its own — `Headline` and `PortfolioShape`
+ * pass `basis` into the API call (see `dashboardApi`) and the backend
+ * (`kpis.ts`/`portfolio.ts`) folds `procurement_global` into Earned Value,
+ * Budget and Actual on `SP`. That moves Operating margin, Backlog and
+ * Progress-vs-Spend.
  *
- * The split itself is buildable — `projects.procurement_global` holds £1,368,140
- * across 72 live projects — but it is a change to the KPI queries, not to a
- * lookup table beside the switch.
+ * It does **not** move Orders won, Live proposals, Enquiries or Sector split —
+ * those are `Awarded`-driven, and the client's own CRM export carries an
+ * identical `Awarded` value on both bases (procurement is £0 there on every
+ * row, even a project that is 90%+ procurement by budget). Splitting those
+ * needs an answer from the client, not a query change here. `AlertBar` states
+ * this on `SP`.
  */
 export type BasisValue = {
   basis: Basis

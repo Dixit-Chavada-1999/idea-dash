@@ -1,4 +1,5 @@
 import { dashboardApi } from '../api/dashboard'
+import { useBasis } from '../basis/context'
 import { Illus } from '../components/Illus'
 import { DECISIONS, KEYLINE } from '../data/console'
 import { useApi } from '../hooks/useApi'
@@ -57,7 +58,8 @@ function BasisNote() {
  * Portfolio panel beside it updated correctly.
  */
 function BundlingNote() {
-  const state = useApi(() => dashboardApi.portfolio())
+  const { basis } = useBasis()
+  const state = useApi(() => dashboardApi.portfolio(basis))
 
   if (state.status !== 'ready') return null
 

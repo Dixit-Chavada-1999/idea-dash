@@ -1,3 +1,4 @@
+import { useBasis } from '../basis/context'
 import { AlertBar, CommandBar } from '../components/CommandBar'
 import { Rail } from '../components/Rail'
 import { useScrollSpy } from '../hooks/useScrollSpy'
@@ -12,6 +13,7 @@ const SECTION_IDS = ['integrity', 'headline', 'shape', 'checks', 'movements', 'o
 
 export default function Dashboard() {
   const active = useScrollSpy(SECTION_IDS)
+  const { basis } = useBasis()
 
   return (
     <div className="app">
@@ -23,11 +25,24 @@ export default function Dashboard() {
 
         <div className="wrap">
           <Integrity />
-          <Headline />
-          <PortfolioShape />
+          {/*
+           * `useApi` freezes its loader on mount and only reruns on an explicit
+           * `refetch()` (see hooks/useApi.ts) — a `basis` state change alone
+           * would not requery. Keying on `basis` remounts these sections
+           * instead, the simplest correct way to make the toggle requery
+           * without changing that hook's frozen-loader contract for every
+           * other caller.
+           *
+           * The key only has to be unique among *these* siblings, not
+           * globally — three children keyed identically `SO`/`SP` is what
+           * produced React's "two children with the same key" warning (and
+           * the duplicate DOM it warns about), so each gets its own prefix.
+           */}
+          <Headline key={`headline-${basis}`} />
+          <PortfolioShape key={`shape-${basis}`} />
           <StandingChecks />
           <Movements />
-          <OpenDecisions />
+          <OpenDecisions key={`decisions-${basis}`} />
         </div>
       </div>
     </div>

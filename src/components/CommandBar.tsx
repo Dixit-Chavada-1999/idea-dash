@@ -148,10 +148,10 @@ export function AlertBar() {
 
   return (
     <div className="alert" role="status">
-      <strong>GROSS BASIS SELECTED — NOTHING ON SCREEN HAS CHANGED.</strong> No figure here is split by basis:
-      backlog and margin are built from budgeted hours, so they are services-only whatever this switch says, and
-      orders are the purchase-order value as entered. Procurement is recorded, but in a JSON column no query reads
-      yet — the Headline footnote reports how much.
+      <strong>GROSS BASIS SELECTED.</strong> Operating margin, backlog and progress-vs-spend now include
+      procurement (`procurement_global`) on top of services. Orders won, Live proposals, Enquiries and Sector split
+      stay services-only regardless — the client's own CRM export carries an identical `Awarded` value on both
+      bases, so there is no split to make there until that is resolved with them.
     </div>
   )
 }

@@ -1,3 +1,4 @@
+import type { Basis } from '../basis/context'
 import type {
   ChecksResponse,
   DecisionsResponse,
@@ -11,9 +12,15 @@ import type {
 import { api } from './client'
 
 export const dashboardApi = {
-  headline: () => api.get<HeadlineResponse>('/dashboard/headline'),
+  /**
+   * `basis` only moves Operating Margin and Backlog here — Orders won, Live
+   * proposals and Enquiries are `SO` regardless, because CRM's own `Awarded`
+   * column does not split by basis (see `AlertBar`).
+   */
+  headline: (basis: Basis) => api.get<HeadlineResponse>(`/dashboard/headline?basis=${basis}`),
   integrity: () => api.get<IntegrityResponse>('/dashboard/integrity'),
-  portfolio: () => api.get<PortfolioResponse>('/dashboard/portfolio'),
+  /** `basis` moves progress-vs-spend and the backlog breakdown; sector split stays `SO`. */
+  portfolio: (basis: Basis) => api.get<PortfolioResponse>(`/dashboard/portfolio?basis=${basis}`),
   checks: () => api.get<ChecksResponse>('/dashboard/checks'),
   movements: (days = 7) => api.get<MovementsResponse>(`/dashboard/movements?days=${days}`),
   run: () => api.get<RunResponse>('/dashboard/run'),

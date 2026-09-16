@@ -1,6 +1,8 @@
 import { dashboardApi } from '../api/dashboard'
+import { useBasis } from '../basis/context'
 import { BacklogChart } from '../components/BacklogChart'
-import { Panel, SectionHead } from '../components/Panel'
+import { OrdersByDisciplineChart } from '../components/OrdersByDisciplineChart'
+import { Panel, Pill, SectionHead } from '../components/Panel'
 import { SectorLegend, SectorPie } from '../components/SectorPie'
 import { sectorColours } from '../components/sectorColours'
 import type { PortfolioResponse } from '../contracts/dashboard'
@@ -8,6 +10,26 @@ import { useApi } from '../hooks/useApi'
 
 const gbp = (n: number) => `£${Math.round(n).toLocaleString('en-GB')}`
 const pct = (n: number) => `${n.toFixed(1)}%`
+
+/**
+ * Names for the disciplines that fall outside the four buckets.
+ *
+ * The `disciplines` table stores the initial as the name — `PRM`'s name is
+ * literally "PRM" — so the database cannot supply this. It matters because the
+ * difference between this breakdown and the headline card *is* PRM, and on the
+ * review call Zac had to work that out for himself: "I'm guessing the
+ * difference there is PMO, basically the project management budgets?" He was
+ * right, and a reader should not have to guess the same thing twice.
+ *
+ * Only entries confirmed on that call appear here. Anything else keeps its
+ * initial rather than being given a name nobody has agreed.
+ */
+const DISCIPLINE_NAME: Record<string, string> = {
+  PRM: 'project management (PMO)',
+}
+
+const named = (initial: string) =>
+  DISCIPLINE_NAME[initial] ? `${initial} — ${DISCIPLINE_NAME[initial]}` : initial
 
 /** One bar. A null value renders an empty track rather than a stand-in figure. */
 function BarRow({ name, value, alt = false }: { name: string; value: number | null; alt?: boolean }) {
@@ -120,7 +142,7 @@ function BacklogPanel({ data }: { data: PortfolioResponse['backlogByDiscipline']
             <>
               <br />
               <strong>Outside these buckets:</strong>{' '}
-              {data.unbucketed.map((u) => `${u.initial} ${gbp(u.value)}`).join(', ')} — held back from the total
+              {data.unbucketed.map((u) => `${named(u.initial)} ${gbp(u.value)}`).join(', ')} — held back from the total
               rather than folded in silently, and counted in the tie above.
             </>
           )}
@@ -142,6 +164,134 @@ function BacklogPanel({ data }: { data: PortfolioResponse['backlogByDiscipline']
           ...(b.bundled && { sub: { text: `${b.composedOf.join(' + ')}`, colour: '#7B8FA0' } }),
         }))}
       />
+    </Panel>
+  )
+}
+
+const PILL_TONE: Record<'green' | 'amber' | 'red', 'green' | 'amber' | 'red'> = {
+  green: 'green',
+  amber: 'amber',
+  red: 'red',
+}
+
+function UtilisationPanel({ data }: { data: PortfolioResponse['utilisation'] }) {
+  const bundled = data.buckets.filter((b) => b.bundled)
+  const delta = data.current.pct !== null && data.prior?.pct != null ? data.current.pct - data.prior.pct : null
+
+  return (
+    <Panel
+      title="Utilisation by discipline"
+      clause="email 30 Aug"
+      right={
+        <>
+          {data.window.label}
+          {data.rating && (
+            <>
+              {' '}
+              <Pill label={data.rating.band} tone={PILL_TONE[data.rating.band]} />
+            </>
+          )}
+        </>
+      }
+      foot={
+        <>
+          <strong>
+            {data.current.pct === null ? '—' : `${data.current.pct.toFixed(1)}%`} project hours ÷ (project +
+            overhead)
+          </strong>{' '}
+          {data.prior?.pct != null && delta !== null && (
+            <>
+              vs {data.prior.pct.toFixed(1)}% {data.prior.label.toLowerCase()} ({delta >= 0 ? '+' : ''}
+              {delta.toFixed(1)}pp).{' '}
+            </>
+          )}
+          {data.rating?.note}{' '}
+          Leave ({Math.round(data.current.leaveHours).toLocaleString('en-GB')} hrs this window) sits outside the
+          ratio on both sides, per the formula given on the call.
+          {bundled.length > 0 && (
+            <>
+              {' '}
+              <strong>{bundled.map((b) => `${b.label} bundles ${b.composedOf.join(' + ')}`).join('; ')}.</strong>
+            </>
+          )}
+          {data.unbucketed.length > 0 && (
+            <>
+              <br />
+              <strong>Outside these buckets:</strong>{' '}
+              {data.unbucketed
+                .map((u) => `${named(u.initial)} ${u.pct === null ? '—' : `${u.pct.toFixed(1)}%`}`)
+                .join(', ')}
+              .
+            </>
+          )}
+          {data.unattributedHours > 0 && (
+            <>
+              <br />
+              <strong>No discipline recorded:</strong> {Math.round(data.unattributedHours).toLocaleString('en-GB')}{' '}
+              hrs, held out rather than guessed into a bucket.
+            </>
+          )}
+        </>
+      }
+    >
+      {data.buckets.map((b) => (
+        <BarRow key={b.label} name={b.label} value={b.pct} />
+      ))}
+    </Panel>
+  )
+}
+
+const DISCIPLINE_COLOURS = ['#1D6FA5', '#58A3CE', '#E8940C', '#9AC7E3']
+const UNALLOCATED_COLOUR = '#B9C3CB'
+
+function OrdersByDisciplinePanel({ data }: { data: PortfolioResponse['ordersByDiscipline'] }) {
+  const bundled = data.buckets.filter((b) => b.bundled)
+  const series = [
+    ...data.buckets.map((b, i) => ({ label: b.label, colour: DISCIPLINE_COLOURS[i % 4]!, values: b.values })),
+    ...(data.unallocated.total > 0
+      ? [{ label: 'Unallocated', colour: UNALLOCATED_COLOUR, values: data.unallocated.values }]
+      : []),
+  ]
+
+  return (
+    <Panel
+      title="Order value by month × discipline"
+      clause="Abi's dashboard #1"
+      right={
+        data.tiesToHeadline
+          ? 'Apportioned by budget-hours split · sums to Orders won'
+          : `Apportioned by budget-hours split · does NOT sum to Orders won (${gbp(data.headlineTotal)})`
+      }
+      foot={
+        <>
+          <code>project_purchase_orders</code> carries no discipline of its own, so each PO's value is split across
+          disciplines in the same proportion as that project's own budget hours.
+          {bundled.length > 0 && (
+            <>
+              {' '}
+              <strong>{bundled.map((b) => `${b.label} bundles ${b.composedOf.join(' + ')}`).join('; ')}.</strong>
+            </>
+          )}
+          {data.unallocated.total > 0 && (
+            <>
+              <br />
+              <strong>Unallocated:</strong> {gbp(data.unallocated.total)} across {data.unallocated.projects}{' '}
+              project{data.unallocated.projects === 1 ? '' : 's'} with no budget hours to apportion by — shown as
+              its own series pending IDEA's ruling on whether to exclude it instead.
+            </>
+          )}
+        </>
+      }
+    >
+      <OrdersByDisciplineChart keys={data.keys} series={series} />
+      <div className="wg-note" style={{ marginTop: 10, display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+        {series.map((s) => (
+          <span key={s.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <i style={{ width: 9, height: 9, background: s.colour, display: 'inline-block', borderRadius: 2 }} />
+            {s.label}
+          </span>
+        ))}
+      </div>
     </Panel>
   )
 }
@@ -185,7 +335,8 @@ function SectorPanel({ data }: { data: PortfolioResponse['sectorSplit'] }) {
 }
 
 export function PortfolioShape() {
-  const state = useApi(() => dashboardApi.portfolio())
+  const { basis } = useBasis()
+  const state = useApi(() => dashboardApi.portfolio(basis))
 
   return (
     <section className="sec fade" id="shape" style={{ animationDelay: '.1s' }}>
@@ -219,6 +370,12 @@ export function PortfolioShape() {
           <div className="row two">
             <ProgressVsSpend data={state.data.progressVsSpend} />
             <BacklogPanel data={state.data.backlogByDiscipline} />
+          </div>
+          <div className="row">
+            <OrdersByDisciplinePanel data={state.data.ordersByDiscipline} />
+          </div>
+          <div className="row">
+            <UtilisationPanel data={state.data.utilisation} />
           </div>
           <div className="row">
             <SectorPanel data={state.data.sectorSplit} />

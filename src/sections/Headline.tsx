@@ -1,4 +1,5 @@
 import { dashboardApi } from '../api/dashboard'
+import { useBasis } from '../basis/context'
 import { OutcomePies } from '../components/OutcomePies'
 import { SectionHead } from '../components/Panel'
 import { Sparkline } from '../components/Sparkline'
@@ -95,7 +96,8 @@ function Skeleton() {
 }
 
 export function Headline() {
-  const state = useApi(() => dashboardApi.headline())
+  const { basis } = useBasis()
+  const state = useApi(() => dashboardApi.headline(basis))
 
   return (
     <section className="sec fade" id="headline" style={{ animationDelay: '.05s' }}>

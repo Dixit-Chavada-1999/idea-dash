@@ -175,6 +175,21 @@ export type BacklogBucket = {
   bundled: boolean
 }
 
+export type UtilisationCohort = {
+  label: string
+  /** project hrs / (project hrs + overhead hrs) — Zac's own formula from the 30 Aug email */
+  pct: number | null
+  projectHours: number
+  overheadHours: number
+  leaveHours: number
+}
+
+export type UtilisationBucket = UtilisationCohort & {
+  /** which disciplines this bucket is made of — MECHANICAL is MEC + CAD */
+  composedOf: string[]
+  bundled: boolean
+}
+
 export type PortfolioResponse = {
   progressVsSpend: {
     /** earned value as a share of budget, weighted by budget per discipline */
@@ -233,6 +248,40 @@ export type PortfolioResponse = {
     headlineOrders: number
     tiesToHeadline: boolean
   }
+  ordersByDiscipline: {
+    label: string
+    keys: string[]
+    buckets: { label: string; values: number[]; composedOf: string[]; bundled: boolean }[]
+    /** disciplines outside the four buckets — never dropped silently */
+    unbucketed: { initial: string; values: number[] }[]
+    /**
+     * PO value that cannot be apportioned at all — the project has no
+     * `project_budget_hours` rows to split it by. 31 projects, £293,727 as of
+     * 7 Sept 2026. Shown as its own series pending T9's ruling on whether IDEA
+     * wants it excluded instead.
+     */
+    unallocated: { values: number[]; total: number; projects: number }
+    /** the same POs summed without apportionment, so the tie is checked, not assumed */
+    headlineTotal: number
+    tiesToHeadline: boolean
+  }
+  utilisation: {
+    /** the quarter this reading covers, half-open */
+    window: { label: string; from: string; to: string }
+    current: UtilisationCohort
+    /** same quarter, twelve months earlier — null only if the query itself fails */
+    prior: UtilisationCohort | null
+    /** IDEA's own kpi_thresholds band for `utilisation` — undefined if the figure or the row is unavailable */
+    rating?: { band: 'green' | 'amber' | 'red'; note: string }
+    buckets: UtilisationBucket[]
+    /** disciplines outside the four buckets — never dropped silently */
+    unbucketed: { initial: string; pct: number | null }[]
+    /**
+     * Hours on rows with no discipline recorded — 29 of roughly 56,000 in
+     * practice. Held out rather than guessed into a bucket.
+     */
+    unattributedHours: number
+  }
   generatedAt: string
 }
 
@@ -275,6 +324,15 @@ export type ChecksResponse = {
     totals: { budget: number; actual: number }
     /** the rule in words, shown under the table so it can be challenged */
     rule: string
+    /**
+     * Won projects with no PO on file, older than the 12-month recency window —
+     * counted, not listed. Widening "Won" to the spec's full definition (adding
+     * closed statuses) pulled in 283 projects going back to 2022, almost all of
+     * them long-settled work that was simply never entered against a formal PO
+     * — a data-backfill gap, not a live exposure. Listing all of them would
+     * bury the 14 that are actually current.
+     */
+    olderCount: number
   }
   unplannedInvoicing: {
     rows: UnplannedInvoicingRow[]
