@@ -49,8 +49,13 @@ function formatLine(line: string, key: number) {
  *
  * Shows the formula only (`kpi.calc`) — not the caveat, which already sits
  * permanently visible under the card.
+ *
+ * `tone` picks the icon's resting/hover colour: `'dark'` (default) for a
+ * `.kpi-hd`/`.panel-hd` header, which sits on the dark shell colour; `'light'`
+ * for a `.chk`/`.sec-hd`, which sits on the page's light canvas. The popover
+ * itself is unaffected — always the dark tooltip, regardless of tone.
  */
-export function CalcTip({ text }: { text: string }) {
+export function CalcTip({ text, tone = 'dark' }: { text: string; tone?: 'dark' | 'light' }) {
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState<{ top: number; left: number; width: number; arrowLeft: number } | null>(null)
   const btnRef = useRef<HTMLButtonElement>(null)
@@ -97,7 +102,7 @@ export function CalcTip({ text }: { text: string }) {
       <button
         ref={btnRef}
         type="button"
-        className="calctip-btn"
+        className={tone === 'light' ? 'calctip-btn on-light' : 'calctip-btn'}
         aria-label="How this is calculated"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}

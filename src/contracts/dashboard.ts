@@ -145,6 +145,8 @@ export type IntegrityCheck = {
   status: CheckStatus
   value: string
   note: string
+  /** the formula alone, for a hover-only "how this is calculated" affordance — distinct from `note` */
+  calc?: string
 }
 
 export type IntegrityResponse = {

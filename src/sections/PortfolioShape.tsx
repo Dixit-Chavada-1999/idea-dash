@@ -61,7 +61,21 @@ function ProgressVsSpend({ data }: { data: PortfolioResponse['progressVsSpend'] 
   const progressNoBudget = projectsWithProgress - measuredProjects
 
   return (
-    <Panel title="Progress vs spend" clause="§5.6" right="Live · weighted by budget">
+    <Panel
+      title="Progress vs spend"
+      clause="§5.6"
+      right="Live · weighted by budget"
+      calc={
+        'Budget = Σ(budget hours × rate card) + Σ expenses.budget\n' +
+        '         + Σ procurement.budget                    -- (SP only)\n' +
+        'EV     = Σ(discipline budget × progress)\n' +
+        '         + Σ procurement.ev                        -- (SP only)\n' +
+        'Cost   = Σ(hours × cost rate) + Σ expenses.actual\n' +
+        '         + Σ procurement.actual                    -- (SP only)\n\n' +
+        'Progress % = EV ÷ Budget\n' +
+        'Spent %    = Cost ÷ Budget'
+      }
+    >
       <BarRow name="Progress" value={progressPct} />
       <BarRow name="Spent" value={spentPct} alt />
 
@@ -119,6 +133,14 @@ function BacklogPanel({ data }: { data: PortfolioResponse['backlogByDiscipline']
         <>
           Net of cost · <b>{gbp(data.total)}</b>
         </>
+      }
+      calc={
+        'Per discipline = Budget − cost booked to it   -- net, not clamped at zero\n\n' +
+        'Buckets = PROCESS, SAFETY,\n' +
+        '          MECHANICAL (MEC+CAD), EC&I (ELC+INC)\n' +
+        'PRM sits outside the four buckets, reported separately\n\n' +
+        'Expenses/procurement carry no discipline — their net sits in its own\n' +
+        'unattributedLineItems figure, added back into the tie to the headline card'
       }
       foot={
         <>
@@ -233,6 +255,14 @@ function UtilisationPanel({ data }: { data: PortfolioResponse['utilisation'] }) 
           )}
         </>
       }
+      calc={
+        'Utilisation = Project hours ÷ (Project hours + Overhead hours)\n\n' +
+        'Classified by project code:\n' +
+        '  2#####…  = client project\n' +
+        '  LEAVE…   = leave      -- excluded from both sides entirely\n' +
+        '  else     = overhead\n\n' +
+        'Measured over the last complete quarter'
+      }
     >
       {data.buckets.map((b) => (
         <BarRow key={b.label} name={b.label} value={b.pct} />
@@ -261,6 +291,13 @@ function OrdersByDisciplinePanel({ data }: { data: PortfolioResponse['ordersByDi
         data.tiesToHeadline
           ? 'Apportioned by budget-hours split · sums to Orders won'
           : `Apportioned by budget-hours split · does NOT sum to Orders won (${gbp(data.headlineTotal)})`
+      }
+      calc={
+        'PO value has no discipline of its own, so it is apportioned:\n\n' +
+        "Each PO's value is split across disciplines\n" +
+        "in the same proportion as that project's own\n" +
+        'project_budget_hours split\n\n' +
+        'Projects with no budget hours -> their own "Unallocated" series'
       }
       foot={
         <>
@@ -309,6 +346,11 @@ function SectorPanel({ data }: { data: PortfolioResponse['sectorSplit'] }) {
         data.tiesToHeadline
           ? 'Purchase orders by sector · totals tie to the headline card'
           : `Purchase orders by sector · total does NOT tie — headline reads ${gbp(data.headlineOrders)}`
+      }
+      calc={
+        "Orders won in the window, grouped by the project's sector\n\n" +
+        'Reconciles to Orders won YTD exactly\n' +
+        'Prior-year pie covers the same stretch of last year, not the whole of it'
       }
       foot={
         <>

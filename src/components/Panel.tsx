@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { CalcTip } from './CalcTip'
 
 export function SectionHead({
   title,
@@ -22,6 +23,7 @@ export function Panel({
   title,
   clause,
   right,
+  calc,
   children,
   foot,
   padded = true,
@@ -29,6 +31,8 @@ export function Panel({
   title?: string
   clause?: string
   right?: ReactNode
+  /** "how this is calculated" tooltip formula — an eye icon at the far right of the header */
+  calc?: string
   children: ReactNode
   foot?: ReactNode
   /** false when the panel owns its own layout, e.g. a table or a tab strip */
@@ -41,6 +45,7 @@ export function Panel({
           <h3>{title}</h3>
           {clause && <span className="cl">{clause}</span>}
           {right && <span className="r">{right}</span>}
+          {calc && <CalcTip text={calc} />}
         </div>
       )}
       {padded ? <div className="panel-body">{children}</div> : children}

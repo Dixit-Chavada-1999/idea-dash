@@ -1,4 +1,5 @@
 import { dashboardApi } from '../api/dashboard'
+import { CalcTip } from '../components/CalcTip'
 import { SectionHead } from '../components/Panel'
 import { useApi } from '../hooks/useApi'
 
@@ -56,7 +57,10 @@ export function Integrity() {
         <div className="strip">
           {state.data.checks.map((c) => (
             <div className="chk" key={c.key}>
-              <span className="k">{c.label}</span>
+              <span className="chk-hd">
+                <span className="k">{c.label}</span>
+                {c.calc && <CalcTip text={c.calc} tone="light" />}
+              </span>
               <span className="v">
                 <span className={`dot dot-${c.status}`} />
                 {c.value}

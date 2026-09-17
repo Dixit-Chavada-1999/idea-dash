@@ -392,6 +392,11 @@
   .chk:last-child {
     border-right: 0;
   }
+  .chk-hd {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+  }
   .chk .k {
     font-family: var(--font-disp);
     font-weight: 700;
@@ -400,6 +405,10 @@
     text-transform: uppercase;
     color: var(--color-ink-3);
     display: block;
+  }
+  .chk-hd .calctip-btn {
+    margin-left: auto;
+    margin-top: -2px;
   }
   .chk .v {
     font-family: var(--font-mono);
@@ -597,6 +606,14 @@
   .calctip-btn:hover,
   .calctip-btn[aria-expanded='true'] {
     color: var(--color-on-dark);
+  }
+  /* sitting on the light canvas (a `.chk` card, a `.sec-hd`), not the dark shell */
+  .calctip-btn.on-light {
+    color: var(--color-ink-3);
+  }
+  .calctip-btn.on-light:hover,
+  .calctip-btn.on-light[aria-expanded='true'] {
+    color: var(--color-ink);
   }
   .calctip-btn:focus-visible {
     outline: 2px solid var(--color-amber);

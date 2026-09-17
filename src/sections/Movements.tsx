@@ -61,6 +61,14 @@ export function Movements() {
             </>
           }
           padded={false}
+          calc={
+            'Each metric is re-run twice, at two different end dates -- "now" and "a week ago" --\n' +
+            'against the same query, not read from any stored history\n\n' +
+            'Orders won YTD      -> dated on PO date\n' +
+            'Enquiries YTD       -> dated on enquiry date\n' +
+            'Cost booked, all time -> dated on the timesheet date\n\n' +
+            'Material = |change| > threshold %   -- flags the row, keeps no ruling on it'
+          }
           foot={
             <>
               {/* count from the rows, not typed in: the metric list is server-side
