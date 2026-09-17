@@ -39,6 +39,8 @@ export type Kpi = {
   meta?: string[]
   /** why a figure is partial or unavailable — shown, never swallowed */
   caveat?: string
+  /** the formula alone, for a hover-only "how this is calculated" affordance — distinct from `caveat`, which covers population/exclusions */
+  calc?: string
   /**
    * Red/amber/green against IDEA's own band, from `kpi_thresholds`.
    *

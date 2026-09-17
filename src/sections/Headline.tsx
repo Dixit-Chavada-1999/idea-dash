@@ -1,5 +1,6 @@
 import { dashboardApi } from '../api/dashboard'
 import { useBasis } from '../basis/context'
+import { CalcTip } from '../components/CalcTip'
 import { OutcomePies } from '../components/OutcomePies'
 import { SectionHead } from '../components/Panel'
 import { Sparkline } from '../components/Sparkline'
@@ -24,6 +25,7 @@ function KpiCard({ kpi }: { kpi: Kpi }) {
             the six map to a band IDEA has set — the rest carry no dot. */}
         {kpi.rating && <span className={`rag rag-${kpi.rating.band}`} title={kpi.rating.note} />}
         <span className={chip.tone ? `chip ${chip.tone}` : 'chip'}>{chip.label}</span>
+        {kpi.calc && <CalcTip text={kpi.calc} />}
       </div>
       <div className="kpi-body">
         <div className={kpi.confidence === 'unavailable' ? 'big muted' : 'big'}>{kpi.value}</div>
