@@ -11,11 +11,15 @@ export type Basis = 'SO' | 'SP'
  * Budget and Actual on `SP`. That moves Operating margin, Backlog and
  * Progress-vs-Spend.
  *
- * It does **not** move Orders won, Live proposals, Enquiries or Sector split —
- * those are `Awarded`-driven, and the client's own CRM export carries an
- * identical `Awarded` value on both bases (procurement is £0 there on every
- * row, even a project that is 90%+ procurement by budget). Splitting those
- * needs an answer from the client, not a query change here. `AlertBar` states
+ * Orders won and Sector split move too, but in the opposite direction: they
+ * start from the raw PO total and `SO` nets each project's own procurement
+ * budget back out (`netAwarded()`, kpis.ts) — the client's own
+ * `so_awarded = awarded − procurementInclMargin`.
+ *
+ * It does **not** move Live proposals or Enquiries — status- and value-based,
+ * with no purchase-order or procurement line to net against on either basis.
+ * Order value by month × discipline also stays put, on `SP` — procurement
+ * carries no date of its own to place in a month. `AlertBar` states all of
  * this on `SP`.
  */
 export type BasisValue = {

@@ -9,9 +9,10 @@ import type { SyncResponse } from '../contracts/dashboard'
  * What the sync button is doing, and what came of it.
  *
  * `refused` is its own state rather than a kind of error. A refusal means the
- * run stopped before writing anything — the download was short, or a table was
- * missing — and the database is untouched. Reading that as a failure would have
- * someone checking data that never changed.
+ * run stopped before writing anything — the download was short, or the export
+ * turned out to describe some other database — and this one is untouched.
+ * Reading that as a failure would have someone checking data that never
+ * changed.
  */
 type SyncState =
   | { phase: 'idle' }
@@ -63,7 +64,7 @@ function SyncButton() {
         disabled={state.phase === 'running'}
         // the whole point of the button is that it rewrites the database; a
         // title that says so is cheaper than an explanation after the fact
-        title="Download the CRM export and replace this database's tables with it"
+        title="Download the CRM export and rebuild this database's tables from it — tables the CRM has dropped are dropped here too"
       >
         {label}
       </button>
@@ -78,7 +79,19 @@ function SyncButton() {
         <span className="sync-note ok" role="status">
           {state.result.tables.length} tables ·{' '}
           {state.result.totalRowsAfter.toLocaleString('en-GB')} rows ·{' '}
-          {Math.round(state.result.durationMs / 1000)}s — reloading
+          {Math.round(state.result.durationMs / 1000)}s
+          {/*
+            Named only when it happened. A sync that changes no table is the
+            ordinary case, and a standing "+0 −0" would train the eye to skip
+            the line on the day one does change.
+          */}
+          {state.result.tablesCreated.length > 0 && (
+            <> · +{state.result.tablesCreated.length} new</>
+          )}
+          {state.result.tablesDropped.length > 0 && (
+            <> · −{state.result.tablesDropped.length} dropped</>
+          )}{' '}
+          — reloading
         </span>
       )}
 
@@ -148,10 +161,12 @@ export function AlertBar() {
 
   return (
     <div className="alert" role="status">
-      <strong>GROSS BASIS SELECTED.</strong> Operating margin, backlog and progress-vs-spend now include
-      procurement (`procurement_global`) on top of services. Orders won, Live proposals, Enquiries and Sector split
-      stay services-only regardless — the client's own CRM export carries an identical `Awarded` value on both
-      bases, so there is no split to make there until that is resolved with them.
+      <strong>GROSS BASIS SELECTED.</strong> Operating margin, backlog, progress-vs-spend, Orders won and Sector
+      split now include procurement — Orders won and Sector split net each PO against its project's own
+      procurement budget, per the client's own formula (`so_awarded = awarded − procurementInclMargin`). Live
+      proposals and Enquiries stay as they are regardless — status- and value-based, with no procurement
+      component to add. Order value by month × discipline also stays on the gross figure: procurement carries no
+      date of its own to place in a month.
     </div>
   )
 }

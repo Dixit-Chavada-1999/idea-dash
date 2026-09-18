@@ -579,6 +579,51 @@
   .spark:hover .spark-dot {
     opacity: 0.85;
   }
+  /* position: fixed + inline top/left/width, set in JS from the hovered
+     rect's own getBoundingClientRect and clamped to the viewport — see
+     Sparkline.tsx. Same visual language as .calctip-body, but the arrow
+     points down (the box sits above the point, not below a button). */
+  .spark-tip {
+    position: fixed;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    align-items: center;
+    padding: 6px 9px;
+    background: var(--color-shell-2);
+    border: 1px solid var(--color-shell-3);
+    border-radius: 6px;
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.4);
+    font-family: var(--font-sans);
+    pointer-events: none;
+    transform: translateY(-100%);
+  }
+  .spark-tip::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: var(--arrow-left);
+    transform: translateX(-50%) rotate(45deg);
+    width: 10px;
+    height: 10px;
+    background: var(--color-shell-2);
+    border-right: 1px solid var(--color-shell-3);
+    border-bottom: 1px solid var(--color-shell-3);
+  }
+  .spark-tip-month {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    color: var(--color-on-dark-2);
+  }
+  .spark-tip-value {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--color-on-dark);
+  }
   .caveat {
     margin-top: 11px;
     font-size: 11.5px;

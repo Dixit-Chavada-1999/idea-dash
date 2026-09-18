@@ -289,10 +289,13 @@ function OrdersByDisciplinePanel({ data }: { data: PortfolioResponse['ordersByDi
       clause="Abi's dashboard #1"
       right={
         data.tiesToHeadline
-          ? 'Apportioned by budget-hours split · sums to Orders won'
+          ? 'Apportioned by budget-hours split · sums to Orders won (S+P)'
           : `Apportioned by budget-hours split · does NOT sum to Orders won (${gbp(data.headlineTotal)})`
       }
       calc={
+        'Always S+P (raw PO value), not basis-aware -- (SP only)\n' +
+        'SO nets each project against its procurement budget,\n' +
+        'a project-level adjustment with no month of its own to place\n\n' +
         'PO value has no discipline of its own, so it is apportioned:\n\n' +
         "Each PO's value is split across disciplines\n" +
         "in the same proportion as that project's own\n" +
@@ -348,8 +351,10 @@ function SectorPanel({ data }: { data: PortfolioResponse['sectorSplit'] }) {
           : `Purchase orders by sector · total does NOT tie — headline reads ${gbp(data.headlineOrders)}`
       }
       calc={
-        "Orders won in the window, grouped by the project's sector\n\n" +
-        'Reconciles to Orders won YTD exactly\n' +
+        "Orders won in the window, grouped by the project's sector\n" +
+        'SO nets each project against its own procurement budget   -- (SP only)\n' +
+        "per the client's own formula: so_awarded = awarded − procurementInclMargin\n\n" +
+        'Reconciles to Orders won YTD exactly, on the same basis\n' +
         'Prior-year pie covers the same stretch of last year, not the whole of it'
       }
       foot={

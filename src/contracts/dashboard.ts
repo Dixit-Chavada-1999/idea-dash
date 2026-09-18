@@ -107,6 +107,16 @@ export type Kpi = {
     keys: string[]
     /** how to format a value in a tooltip — the series is bare numbers */
     unit: 'money' | 'count' | 'percent'
+    /**
+     * True on the one series whose last point is a running current month, not
+     * a completed one — Enquiries YTD, at the client's request, so its dots
+     * sum to the YTD figure above them. Every other series excludes the
+     * current month for the opposite reason: a part-month point reads as a
+     * fall on a line with no axis. The caveat under the chart reads
+     * differently depending on this flag rather than claiming "complete
+     * months only" on the one chart where that's no longer true.
+     */
+    toDate: boolean
   }
 }
 
@@ -456,9 +466,13 @@ export type SyncResponse = {
   durationMs: number
   /** size of the downloaded dump */
   bytes: number
-  /** SQL statements executed — TRUNCATEs and INSERTs */
+  /** SQL statements executed — CREATEs and INSERTs */
   statements: number
   tables: { name: string; rowsBefore: number; rowsAfter: number }[]
+  /** in the export but not in this database before the run — created by it */
+  tablesCreated: string[]
+  /** in this database but no longer in the export — dropped by the run */
+  tablesDropped: string[]
   totalRowsBefore: number
   totalRowsAfter: number
 }

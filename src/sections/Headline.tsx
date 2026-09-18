@@ -61,9 +61,7 @@ function KpiCard({ kpi }: { kpi: Kpi }) {
             />
             <div className="meta">
               <span>{kpi.series.plots}</span>
-              <span>
-                {kpi.series.label} · complete months only
-              </span>
+              <span>{kpi.series.label} · {kpi.series.toDate ? 'to date, current month included' : 'complete months only'}</span>
             </div>
           </>
         )}
