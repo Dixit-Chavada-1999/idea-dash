@@ -338,6 +338,8 @@ export type ChecksResponse = {
     totals: { budget: number; actual: number }
     /** the rule in words, shown under the table so it can be challenged */
     rule: string
+    /** the same rule as a formula, for the eye-icon tooltip */
+    calc: string
     /**
      * Won projects with no PO on file, older than the 12-month recency window —
      * counted, not listed. Widening "Won" to the spec's full definition (adding
@@ -352,6 +354,8 @@ export type ChecksResponse = {
     rows: UnplannedInvoicingRow[]
     outstandingTotal: number
     rule: string
+    /** the same rule as a formula, for the eye-icon tooltip */
+    calc: string
     /** how many rows the rule returns without the money-outstanding gate */
     withoutGateCount: number
     /**

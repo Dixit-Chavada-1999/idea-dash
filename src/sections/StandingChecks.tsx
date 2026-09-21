@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { dashboardApi } from '../api/dashboard'
+import { CalcTip } from '../components/CalcTip'
 import { Pill, SectionHead } from '../components/Panel'
 import type { CheckSeverity, ChecksResponse } from '../contracts/dashboard'
 import { useApi } from '../hooks/useApi'
@@ -219,6 +220,16 @@ export function StandingChecks() {
           >
             Unplanned invoicing {invCount !== null && <span className="count q">{invCount}</span>}
           </button>
+          {/* the active tab's own rule, as a formula — same affordance as every
+              other panel's header, just outside a <button> since the tabs
+              already are one and a button cannot nest inside a button */}
+          {state.status === 'ready' && (
+            <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}>
+              <CalcTip
+                text={tab === 'po' ? state.data.pendingPo.calc : state.data.unplannedInvoicing.calc}
+              />
+            </span>
+          )}
         </div>
 
         {state.status === 'loading' && (
