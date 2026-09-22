@@ -5,11 +5,14 @@ import { useScrollSpy } from '../hooks/useScrollSpy'
 import { Headline } from '../sections/Headline'
 import { Integrity } from '../sections/Integrity'
 import { Movements } from '../sections/Movements'
-import { OpenDecisions } from '../sections/OpenDecisions'
+// import { OpenDecisions } from '../sections/OpenDecisions'
 import { PortfolioShape } from '../sections/PortfolioShape'
 import { StandingChecks } from '../sections/StandingChecks'
 
-const SECTION_IDS = ['integrity', 'headline', 'shape', 'checks', 'movements', 'open']
+// 'open' is out while the Open decisions section is hidden — scroll-spy on an
+// id that never renders would leave the rail highlighting nothing at the foot
+// of the page.
+const SECTION_IDS = ['integrity', 'headline', 'shape', 'checks', 'movements']
 
 export default function Dashboard() {
   const active = useScrollSpy(SECTION_IDS)
@@ -42,7 +45,11 @@ export default function Dashboard() {
           <PortfolioShape key={`shape-${basis}`} />
           <StandingChecks />
           <Movements />
-          <OpenDecisions key={`decisions-${basis}`} />
+          {/* Open decisions hidden. The section, its data and
+              /api/dashboard/decisions are all left intact — uncomment this line
+              and its import, restore 'open' to SECTION_IDS, and put the Build
+              group back in NAV (data/console.tsx) to bring it back. */}
+          {/* <OpenDecisions key={`decisions-${basis}`} /> */}
         </div>
       </div>
     </div>

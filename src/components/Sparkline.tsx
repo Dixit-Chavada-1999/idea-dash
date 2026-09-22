@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { gbp } from '../data/money'
 
 const W = 200
 const H = 30
@@ -10,7 +11,7 @@ const TIP_WIDTH = 130
 type Unit = 'money' | 'count' | 'percent'
 
 function format(v: number, unit: Unit) {
-  if (unit === 'money') return `£${Math.round(v).toLocaleString('en-GB')}`
+  if (unit === 'money') return gbp(v)
   if (unit === 'percent') return `${v.toFixed(1)}%`
   return v.toLocaleString('en-GB')
 }

@@ -237,6 +237,12 @@ export type PortfolioResponse = {
      */
     unattributedCost: number
     /**
+     * Net (budget − actual) of expenses (both bases) and, on `SP`, procurement.
+     * Neither carries a discipline, so like `unattributedCost` this sits outside
+     * every bucket and is added back in the tie check rather than dropped.
+     */
+    unattributedLineItems: number
+    /**
      * The Headline card's "Current backlog", so the panel can state the tie
      * rather than leave two figures on one screen to be compared by eye.
      */

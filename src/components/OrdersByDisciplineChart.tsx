@@ -1,3 +1,5 @@
+import { gbp } from '../data/money'
+
 export type MonthlyBar = { label: string; colour: string; values: number[] }
 
 const BASE_Y = 168
@@ -68,7 +70,7 @@ export function OrdersByDisciplineChart({ keys, series }: { keys: string[]; seri
                   height={y(s.bottom) - y(s.bottom + s.value)}
                   fill={s.colour}
                 >
-                  <title>{`${s.name}, ${label} — £${Math.round(s.value).toLocaleString('en-GB')}`}</title>
+                  <title>{`${s.name}, ${label} — ${gbp(s.value)}`}</title>
                 </rect>
               ))}
             {total > 0 && (

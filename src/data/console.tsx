@@ -29,10 +29,13 @@ export const NAV: NavGroup[] = [
       { href: '#movements', label: 'Movements', clause: '§8' },
     ],
   },
-  {
-    group: 'Build',
-    items: [{ href: '#open', label: 'Open decisions' }],
-  },
+  // The Build group held a single link to #open. That section is hidden
+  // (see pages/Dashboard.tsx), and a rail link to an anchor that no longer
+  // renders scrolls nowhere, so the group comes out with it.
+  // {
+  //   group: 'Build',
+  //   items: [{ href: '#open', label: 'Open decisions' }],
+  // },
 ]
 
 /* --------------------------------------------------- standing checks */

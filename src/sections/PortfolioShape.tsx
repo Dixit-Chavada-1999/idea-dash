@@ -7,12 +7,12 @@ import { SectorLegend, SectorPie } from '../components/SectorPie'
 import { sectorColours } from '../components/sectorColours'
 import type { PortfolioResponse } from '../contracts/dashboard'
 import { useApi } from '../hooks/useApi'
+import { gbp } from '../data/money'
 
-const gbp = (n: number) => `£${Math.round(n).toLocaleString('en-GB')}`
 const pct = (n: number) => `${n.toFixed(1)}%`
 
 /**
- * Names for the disciplines that fall outside the four buckets.
+ * The client's own glosses for the discipline codes (16 September call).
  *
  * The `disciplines` table stores the initial as the name — `PRM`'s name is
  * literally "PRM" — so the database cannot supply this. It matters because the
@@ -24,8 +24,14 @@ const pct = (n: number) => `${n.toFixed(1)}%`
  * Only entries confirmed on that call appear here. Anything else keeps its
  * initial rather than being given a name nobody has agreed.
  */
+/** The client's own glosses, from the 16 September call. */
 const DISCIPLINE_NAME: Record<string, string> = {
   PRM: 'project management (PMO)',
+  PRO: 'process',
+  INC: 'instruments and control',
+  MEC: 'mechanical',
+  ELC: 'electrical',
+  SAF: 'safety',
 }
 
 const named = (initial: string) =>
@@ -66,14 +72,16 @@ function ProgressVsSpend({ data }: { data: PortfolioResponse['progressVsSpend'] 
       clause="§5.6"
       right="Live · weighted by budget"
       calc={
-        'Budget = Σ(budget hours × rate card) + Σ expenses.budget\n' +
-        '         + Σ procurement.budget                    -- (SP only)\n' +
-        'EV     = Σ(discipline budget × progress)\n' +
-        '         + Σ procurement.ev                        -- (SP only)\n' +
-        'Cost   = Σ(hours × cost rate) + Σ expenses.actual\n' +
-        '         + Σ procurement.actual                    -- (SP only)\n\n' +
-        'Progress % = EV ÷ Budget\n' +
-        'Spent %    = Cost ÷ Budget'
+        'Budget = Σ(budget hours × rate card)\n' +
+        '         + Σ budgeted expenses\n' +
+        '         + Σ procurement budget     -- (SP only)\n' +
+        'EV     = Σ(each discipline’s budget × its own\n' +
+        '           progress)\n' +
+        '         + Σ procurement earned     -- (SP only)\n' +
+        'Cost   = Σ(hours × cost rate) + Σ expenses paid\n' +
+        '         + Σ procurement spend      -- (SP only)\n\n' +
+        'Progress % = EV ÷ budget\n' +
+        'Spent %    = cost ÷ budget'
       }
     >
       <BarRow name="Progress" value={progressPct} />
@@ -135,12 +143,21 @@ function BacklogPanel({ data }: { data: PortfolioResponse['backlogByDiscipline']
         </>
       }
       calc={
-        'Per discipline = Budget − cost booked to it   -- net, not clamped at zero\n\n' +
-        'Buckets = PROCESS, SAFETY,\n' +
-        '          MECHANICAL (MEC+CAD), EC&I (ELC+INC)\n' +
-        'PRM sits outside the four buckets, reported separately\n\n' +
-        'Expenses/procurement carry no discipline — their net sits in its own\n' +
-        'unattributedLineItems figure, added back into the tie to the headline card'
+        'Per discipline = its budget, less the cost\n' +
+        '                 booked to it   -- can go negative\n\n' +
+        'Budget = budget hours x rate card\n' +
+        'Cost   = hours booked x charge rate\n' +
+        'Both over Live and Ready to start\n\n' +
+        'One bar per discipline -- PRO, INC, MEC, CAD,\n' +
+        'SAF, ELC, PRM, OPE. Nothing is bundled.\n\n' +
+        'Expenses and procurement belong to no discipline,\n' +
+        'so their net is held separately and added back in\n' +
+        'when this is tied to the headline card\n\n' +
+        'SO  -> expenses only\n' +
+        'S+P -> expenses and procurement\n' +
+        '       -- procurement carries no discipline in\n' +
+        '          the CRM, so the basis moves this figure\n' +
+        '          and the total, never the bars'
       }
       foot={
         <>
@@ -157,7 +174,7 @@ function BacklogPanel({ data }: { data: PortfolioResponse['backlogByDiscipline']
                 {bundled.map((b) => `${b.label} bundles ${b.composedOf.join(' + ')}`).join('; ')}.
               </strong>{' '}
               Both are separable in this data — the disciplines carry their own budget hours, so this bundling can
-              be retired whenever the four-bucket view is no longer wanted.{' '}
+              be unbundled whenever a combined view is no longer wanted.{' '}
             </>
           )}
           {data.unbucketed.length > 0 && (
@@ -173,6 +190,15 @@ function BacklogPanel({ data }: { data: PortfolioResponse['backlogByDiscipline']
               <br />
               <strong>Unattributed cost:</strong> {gbp(data.unattributedCost)} of booked cost carries no
               discipline, so it belongs to no bar. It is taken off the tie above, not off a bucket.
+            </>
+          )}
+          {data.unattributedLineItems !== 0 && (
+            <>
+              <br />
+              <strong>Expenses and procurement:</strong> {gbp(data.unattributedLineItems)} of backlog sits in
+              line items, which are recorded against the project and carry no discipline at all. It is in the
+              headline card but in no bar here — without this line the bars look short of the card by exactly
+              this much.
             </>
           )}
         </>
@@ -256,11 +282,13 @@ function UtilisationPanel({ data }: { data: PortfolioResponse['utilisation'] }) 
         </>
       }
       calc={
-        'Utilisation = Project hours ÷ (Project hours + Overhead hours)\n\n' +
-        'Classified by project code:\n' +
-        '  2#####…  = client project\n' +
-        '  LEAVE…   = leave      -- excluded from both sides entirely\n' +
-        '  else     = overhead\n\n' +
+        'Utilisation = project hours\n' +
+        '              ÷ (project hours + overhead hours)\n\n' +
+        'Told apart by the project code:\n' +
+        '  starts 2#####  -> client project\n' +
+        '  starts LEAVE   -> leave, left out of both\n' +
+        '                    sides entirely\n' +
+        '  anything else  -> overhead\n\n' +
         'Measured over the last complete quarter'
       }
     >
@@ -293,14 +321,16 @@ function OrdersByDisciplinePanel({ data }: { data: PortfolioResponse['ordersByDi
           : `Apportioned by budget-hours split · does NOT sum to Orders won (${gbp(data.headlineTotal)})`
       }
       calc={
-        'Always S+P (raw PO value), not basis-aware -- (SP only)\n' +
-        'SO nets each project against its procurement budget,\n' +
-        'a project-level adjustment with no month of its own to place\n\n' +
-        'PO value has no discipline of its own, so it is apportioned:\n\n' +
-        "Each PO's value is split across disciplines\n" +
-        "in the same proportion as that project's own\n" +
-        'project_budget_hours split\n\n' +
-        'Projects with no budget hours -> their own "Unallocated" series'
+        'Always the raw purchase order value, S+P, whichever\n' +
+        'basis is selected                      -- (SP only)\n' +
+        'SO would net each project against its procurement\n' +
+        'budget, and that adjustment sits at project level\n' +
+        'with no month of its own to sit in\n\n' +
+        'A purchase order carries no discipline, so its value\n' +
+        'is split across the disciplines in the same\n' +
+        'proportion as that project’s own budget hours\n\n' +
+        'Projects with no budget hours go to their own\n' +
+        '"Unallocated" series'
       }
       foot={
         <>
@@ -351,11 +381,15 @@ function SectorPanel({ data }: { data: PortfolioResponse['sectorSplit'] }) {
           : `Purchase orders by sector · total does NOT tie — headline reads ${gbp(data.headlineOrders)}`
       }
       calc={
-        "Orders won in the window, grouped by the project's sector\n" +
-        'SO nets each project against its own procurement budget   -- (SP only)\n' +
-        "per the client's own formula: so_awarded = awarded − procurementInclMargin\n\n" +
-        'Reconciles to Orders won YTD exactly, on the same basis\n' +
-        'Prior-year pie covers the same stretch of last year, not the whole of it'
+        'Orders won in the window, grouped by the sector\n' +
+        'the project belongs to\n\n' +
+        'On SO, each project is netted against its own\n' +
+        'procurement budget                     -- (SP only)\n' +
+        '  awarded − procurement, margin included\n' +
+        '  -- IDEA’s own formula\n\n' +
+        'Adds up to Orders won YTD exactly, on the same\n' +
+        'basis. The prior-year pie covers the same stretch\n' +
+        'of last year, not the whole year.'
       }
       foot={
         <>

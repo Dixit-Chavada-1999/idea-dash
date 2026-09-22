@@ -1,4 +1,5 @@
 import type { SectorSlice } from '../contracts/dashboard'
+import { gbp } from '../data/money'
 
 const CX = 100
 const CY = 100
@@ -66,7 +67,7 @@ export function SectorPie({ slices, colours, label }: Props) {
       path: arcPath(a0, a1),
       stroke: strokeFor(fraction),
       empty: d.value <= 0,
-      title: `${d.name} — £${d.value.toLocaleString('en-GB')} (${(fraction * 100).toFixed(1)}%)`,
+      title: `${d.name} — ${gbp(d.value)} (${(fraction * 100).toFixed(1)}%)`,
     }
   })
 

@@ -4,8 +4,8 @@ import { Illus } from '../components/Illus'
 import { DECISIONS, KEYLINE } from '../data/console'
 import { useApi } from '../hooks/useApi'
 import { formatDay, useRun } from '../run/context'
+import { gbp } from '../data/money'
 
-const gbp = (n: number) => `£${Math.round(n).toLocaleString('en-GB')}`
 
 /**
  * The standing basis note.

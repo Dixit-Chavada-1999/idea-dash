@@ -6,6 +6,7 @@ import { SectionHead } from '../components/Panel'
 import { Sparkline } from '../components/Sparkline'
 import type { Kpi } from '../contracts/dashboard'
 import { useApi } from '../hooks/useApi'
+import { gbp } from '../data/money'
 
 const CONFIDENCE_CHIP: Record<Kpi['confidence'], { label: string; tone: string }> = {
   measured: { label: 'MEASURED', tone: '' },
@@ -141,7 +142,7 @@ export function Headline() {
               <strong className="num">{state.data.integrity.projectsActive.toLocaleString('en-GB')}</strong> active
               projects of {state.data.integrity.projectsTotal.toLocaleString('en-GB')} on file.{' '}
               <strong className="num">
-                £{Math.round(state.data.integrity.valueRecoveredFromCsv).toLocaleString('en-GB')}
+                {gbp(state.data.integrity.valueRecoveredFromCsv)}
               </strong>{' '}
               of project value sits in the migration&rsquo;s raw import column and is counted here — summing the
               live column alone would miss it.{' '}
@@ -156,8 +157,8 @@ export function Headline() {
                 {state.data.integrity.procurementProjects > 0 ? (
                   <>
                     The numeric procurement columns are empty, but{' '}
-                    <strong className="num">{state.data.integrity.procurementProjects}</strong> projects carry £
-                    {Math.round(state.data.integrity.procurementValue).toLocaleString('en-GB')} in{' '}
+                    <strong className="num">{state.data.integrity.procurementProjects}</strong> projects carry{' '}
+                    {gbp(state.data.integrity.procurementValue)} in{' '}
                     <code>procurement_global</code> — enough to build one
                   </>
                 ) : (

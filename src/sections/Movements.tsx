@@ -2,9 +2,10 @@ import { dashboardApi } from '../api/dashboard'
 import { Panel, Pill, SectionHead } from '../components/Panel'
 import type { MovementRow } from '../contracts/dashboard'
 import { useApi } from '../hooks/useApi'
+import { gbp } from '../data/money'
 
 function value(v: number, unit: MovementRow['unit']) {
-  if (unit === 'money') return `£${Math.round(v).toLocaleString('en-GB')}`
+  if (unit === 'money') return gbp(v)
   if (unit === 'percent') return `${v.toFixed(1)}%`
   return Math.round(v).toLocaleString('en-GB')
 }
@@ -13,7 +14,7 @@ function delta(r: MovementRow) {
   const sign = r.change >= 0 ? '+' : '−'
   const size =
     r.unit === 'money'
-      ? `£${Math.abs(Math.round(r.change)).toLocaleString('en-GB')}`
+      ? gbp(Math.abs(r.change))
       : Math.abs(Math.round(r.change)).toLocaleString('en-GB')
   const pct = r.changePct === null ? '' : ` · ${sign}${Math.abs(r.changePct).toFixed(1)}%`
   return `${sign}${size}${pct}`
@@ -62,12 +63,16 @@ export function Movements() {
           }
           padded={false}
           calc={
-            'Each metric is re-run twice, at two different end dates -- "now" and "a week ago" --\n' +
-            'against the same query, not read from any stored history\n\n' +
-            'Orders won YTD      -> dated on PO date\n' +
-            'Enquiries YTD       -> dated on enquiry date\n' +
-            'Cost booked, all time -> dated on the timesheet date\n\n' +
-            'Material = |change| > threshold %   -- flags the row, keeps no ruling on it'
+            'Nothing is read from stored history. Each figure\n' +
+            'is worked out twice from the same query — once\n' +
+            'up to today, once up to a week ago.\n\n' +
+            'Each rests on a date of its own:\n' +
+            '  Orders won YTD  -> the purchase order date\n' +
+            '  Enquiries YTD   -> the enquiry date\n' +
+            '  Cost booked     -> the day the hours were\n' +
+            '                     booked to the timesheet\n\n' +
+            'Material = a move bigger than the threshold %\n' +
+            '           -- flags the row, rules on nothing'
           }
           foot={
             <>

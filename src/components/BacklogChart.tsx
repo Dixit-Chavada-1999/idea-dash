@@ -1,13 +1,37 @@
 import type { BacklogBar } from '../data/backlog'
+import { gbp } from '../data/money'
 
 const BASE_Y = 165
 const TOP_Y = 23
-const BAR_W = 70
-const FIRST_X = 68
-const GAP = 92
+const PLOT_X = 56
+const PLOT_R = 424
 
 const fmt = (v: number) => `${Math.round(v / 1000)}k`
-const centre = (i: number) => FIRST_X + i * GAP + BAR_W / 2
+
+/**
+ * Bar geometry, derived from the number of bars rather than fixed.
+ *
+ * These were constants sized for the four bundled buckets — BAR_W 70, GAP 92,
+ * first bar at x=68. Unbundling the disciplines on 22 September 2026 took the
+ * count to eight, and bars six onward were drawn past the viewBox's 430 and
+ * simply vanished: ELC and PRM were missing from the chart while still counted
+ * in the total printed above it. A chart that silently drops a discipline is
+ * worse than one that looks cramped, so the slot is divided out of the plot
+ * width instead.
+ */
+function geometry(n: number) {
+  const slot = (PLOT_R - PLOT_X) / Math.max(1, n)
+  const width = slot * 0.66
+  return {
+    width,
+    x: (i: number) => PLOT_X + i * slot + (slot - width) / 2,
+    centre: (i: number) => PLOT_X + i * slot + slot / 2,
+    // the label type has to come down once the slots narrow, or eight
+    // three-letter codes at 1.4 letter-spacing collide
+    labelSize: slot < 46 ? 8 : 10,
+    valueSize: slot < 46 ? 10 : 12,
+  }
+}
 
 /**
  * Four ticks ending on a round number at or above the tallest bar.
@@ -34,6 +58,7 @@ function axis(bars: BacklogBar[]): { max: number; ticks: number[] } {
  */
 export function BacklogChart({ bars }: { bars: BacklogBar[] }) {
   const { max: AXIS_MAX, ticks: TICKS } = axis(bars)
+  const geo = geometry(bars.length)
   const y = (v: number) => BASE_Y - (Math.min(Math.max(0, v), AXIS_MAX) / AXIS_MAX) * (BASE_Y - TOP_Y)
 
   return (
@@ -57,15 +82,15 @@ export function BacklogChart({ bars }: { bars: BacklogBar[] }) {
         const top = y(b.value)
         return (
           <g key={b.label}>
-            <rect x={FIRST_X + i * GAP} y={top} width={BAR_W} height={BASE_Y - top} fill={b.colour}>
-              <title>{`${b.label} — £${b.value.toLocaleString('en-GB')}`}</title>
+            <rect x={geo.x(i)} y={top} width={geo.width} height={BASE_Y - top} fill={b.colour}>
+              <title>{`${b.label} — ${gbp(b.value)}`}</title>
             </rect>
             <text
-              x={centre(i)}
+              x={geo.centre(i)}
               y={top - 6}
               textAnchor="middle"
               fontFamily="IBM Plex Mono, monospace"
-              fontSize="12"
+              fontSize={geo.valueSize}
               fontWeight="600"
               fill="#0D1B26"
             >
@@ -82,13 +107,13 @@ export function BacklogChart({ bars }: { bars: BacklogBar[] }) {
       <g
         fontFamily="Archivo, sans-serif"
         fontWeight="700"
-        fontSize="10"
+        fontSize={geo.labelSize}
         fill="#4B5F6E"
         textAnchor="middle"
         letterSpacing="1.4"
       >
         {bars.map((b, i) => (
-          <text key={b.label} x={centre(i)} y={183}>
+          <text key={b.label} x={geo.centre(i)} y={183}>
             {b.label}
           </text>
         ))}
@@ -98,7 +123,7 @@ export function BacklogChart({ bars }: { bars: BacklogBar[] }) {
       <g fontFamily="IBM Plex Mono, monospace" fontSize="9" textAnchor="middle">
         {bars.map((b, i) =>
           b.sub ? (
-            <text key={b.label} x={centre(i)} y={197} fill={b.sub.colour}>
+            <text key={b.label} x={geo.centre(i)} y={197} fill={b.sub.colour}>
               {b.sub.text}
             </text>
           ) : null,

@@ -2,7 +2,7 @@ import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 const MARGIN = 12
-const WIDTH = 340
+const WIDTH = 420
 
 // splits "SO Actual = ... -- (SP only) note" into a code part and a trailing
 // "-- comment", then highlights "S+P"/"(SP only)" within the code part —
