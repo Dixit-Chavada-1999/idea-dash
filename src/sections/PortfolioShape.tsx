@@ -8,6 +8,8 @@ import { sectorColours } from '../components/sectorColours'
 import type { PortfolioResponse } from '../contracts/dashboard'
 import { useApi } from '../hooks/useApi'
 import { gbp } from '../data/money'
+import { download, stamped, toCsv } from '../data/csv'
+import { UtilisationChart } from '../components/UtilisationChart'
 
 const pct = (n: number) => `${n.toFixed(1)}%`
 
@@ -53,6 +55,7 @@ function BarRow({ name, value, alt = false }: { name: string; value: number | nu
     </div>
   )
 }
+
 
 function ProgressVsSpend({ data }: { data: PortfolioResponse['progressVsSpend'] }) {
   const {
@@ -292,9 +295,7 @@ function UtilisationPanel({ data }: { data: PortfolioResponse['utilisation'] }) 
         'Measured over the last complete quarter'
       }
     >
-      {data.buckets.map((b) => (
-        <BarRow key={b.label} name={b.label} value={b.pct} />
-      ))}
+      <UtilisationChart bars={data.buckets.map((b) => ({ label: b.label, pct: b.pct }))} />
     </Panel>
   )
 }
@@ -311,14 +312,57 @@ function OrdersByDisciplinePanel({ data }: { data: PortfolioResponse['ordersByDi
       : []),
   ]
 
+  /*
+   * Wide, not long: one row per month, one column per discipline, the month's
+   * total last. That is the shape the chart draws and the shape a spreadsheet
+   * can chart again without a pivot.
+   *
+   * Rounded to the penny, and every total summed from the rounded cells rather
+   * than from the raw ones. Apportionment produces fractions of a penny — a
+   * month's PRO share comes out at 51132.861578 — and writing those would give
+   * an unreadable file whose columns still would not add to the total shown,
+   * because the reader adds what it can see. Adding the visible figures is how
+   * anyone checks an export, so the file is made to survive that.
+   */
+  const exportCsv = () => {
+    const penny = (n: number) => Math.round(n * 100) / 100
+    /*
+     * Money is written with its symbol, at the client's request: £51132.86.
+     *
+     * No thousands separators. A comma inside the figure would force the field
+     * to be quoted, and a quoted £-prefixed string is text in every reader —
+     * with the symbol alone, a UK-locale Excel still parses the cell as
+     * currency and arithmetic keeps working.
+     */
+    const money = (n: number) => `£${penny(n).toFixed(2)}`
+    const cells = data.keys.map((_, i) => series.map((s) => penny(s.values[i] ?? 0)))
+
+    const header = ['Month', ...series.map((s) => s.label), 'Total']
+    const rows = data.keys.map((month, i) => {
+      const v = cells[i]!
+      return [month, ...v.map(money), money(v.reduce((a, b) => a + b, 0))]
+    })
+    const columnTotals = series.map((_, c) => penny(cells.reduce((s, row) => s + row[c]!, 0)))
+    const total = penny(columnTotals.reduce((a, b) => a + b, 0))
+
+    download(
+      stamped('order-value-by-month-discipline'),
+      toCsv([header, ...rows, ['Total', ...columnTotals.map(money), money(total)]]),
+    )
+  }
   return (
     <Panel
       title="Order value by month × discipline"
       clause="Abi's dashboard #1"
       right={
-        data.tiesToHeadline
-          ? 'Apportioned by budget-hours split · sums to Orders won (S+P)'
-          : `Apportioned by budget-hours split · does NOT sum to Orders won (${gbp(data.headlineTotal)})`
+        <>
+          {data.tiesToHeadline
+            ? 'Apportioned by budget-hours split · sums to Orders won (S+P)'
+            : `Apportioned by budget-hours split · does NOT sum to Orders won (${gbp(data.headlineTotal)})`}{' '}
+          <button type="button" className="panel-export" onClick={exportCsv}>
+            Export CSV
+          </button>
+        </>
       }
       calc={
         'Always the raw purchase order value, S+P, whichever\n' +

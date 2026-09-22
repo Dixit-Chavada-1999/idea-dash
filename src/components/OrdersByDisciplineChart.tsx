@@ -4,9 +4,35 @@ export type MonthlyBar = { label: string; colour: string; values: number[] }
 
 const BASE_Y = 168
 const TOP_Y = 20
-const BAR_W = 26
 const FIRST_X = 46
-const GAP = 40
+
+/*
+ * Bar spacing, widened 22 September 2026.
+ *
+ * It was GAP 40 / BAR_W 26, which made the drawing 546 units wide. An SVG with
+ * a fixed height and the default preserveAspectRatio scales by whichever axis
+ * binds first: height was pinned at 210 and the viewBox is 210 tall, so the
+ * scale was 1 and the chart drew at 546px in the middle of a panel twice that,
+ * with white space either side. Worse, each month got 40px for a label like
+ * Sep’2025, which needs about 45 — so the axis ran together into one unbroken
+ * line of text.
+ *
+ * 92 units a month makes the twelve-month drawing ~1170 wide, close enough to
+ * the panel that the scale stops being the thing that shrinks it, and gives
+ * every label room. The height now follows the width (see the <svg/>), so this
+ * stays true at any panel size.
+ */
+const GAP = 92
+
+/*
+ * The bar fills 80% of its month, leaving 18 units of air between neighbours.
+ *
+ * It was 60 of 92 — a third of the chart was white space, and on a stacked bar
+ * the gaps read as loudly as the bars do. The slot itself stays at 92 because
+ * that is what the month label underneath needs; widening the bar closes the
+ * gap without touching the axis.
+ */
+const BAR_W = Math.round(GAP * 0.8)
 
 const fmt = (v: number) => (v === 0 ? '' : `${Math.round(v / 1000)}k`)
 const centre = (i: number) => FIRST_X + i * GAP + BAR_W / 2
@@ -34,7 +60,15 @@ export function OrdersByDisciplineChart({ keys, series }: { keys: string[]; seri
   const width = FIRST_X + keys.length * GAP + 20
 
   return (
-    <svg viewBox={`0 0 ${width} 210`} width="100%" height={210} role="img" aria-label="Order value by month and discipline">
+    // width-driven, not height-driven: `height: auto` lets the drawing fill the
+    // panel and take whatever height its own aspect ratio asks for, instead of
+    // being pinned to 210 and centred inside the space it refused to use
+    <svg
+      viewBox={`0 0 ${width} 210`}
+      style={{ width: '100%', height: 'auto', display: 'block' }}
+      role="img"
+      aria-label="Order value by month and discipline"
+    >
       <g fontFamily="IBM Plex Mono, monospace" fontSize="9.5" fill="#7B8FA0">
         {TICKS.map((t) => (
           <text key={t} x={FIRST_X - 6} y={y(t) + 3} textAnchor="end">

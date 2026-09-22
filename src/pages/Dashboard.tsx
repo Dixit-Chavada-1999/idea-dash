@@ -3,16 +3,15 @@ import { AlertBar, CommandBar } from '../components/CommandBar'
 import { Rail } from '../components/Rail'
 import { useScrollSpy } from '../hooks/useScrollSpy'
 import { Headline } from '../sections/Headline'
-import { Integrity } from '../sections/Integrity'
+// import { Integrity } from '../sections/Integrity'
 import { Movements } from '../sections/Movements'
 // import { OpenDecisions } from '../sections/OpenDecisions'
 import { PortfolioShape } from '../sections/PortfolioShape'
 import { StandingChecks } from '../sections/StandingChecks'
 
-// 'open' is out while the Open decisions section is hidden — scroll-spy on an
-// id that never renders would leave the rail highlighting nothing at the foot
-// of the page.
-const SECTION_IDS = ['integrity', 'headline', 'shape', 'checks', 'movements']
+// 'open' and 'integrity' are out while those sections are hidden — scroll-spy
+// on an id that never renders would leave the rail highlighting nothing.
+const SECTION_IDS = ['headline', 'shape', 'checks', 'movements']
 
 export default function Dashboard() {
   const active = useScrollSpy(SECTION_IDS)
@@ -27,7 +26,10 @@ export default function Dashboard() {
         <AlertBar />
 
         <div className="wrap">
-          <Integrity />
+          {/* Ingestion & integrity is hidden at the client's request. The section
+              still builds — uncomment this and its import to bring it back, and
+              put 'integrity' back at the head of SECTION_IDS and the rail. */}
+          {/* <Integrity /> */}
           {/*
            * `useApi` freezes its loader on mount and only reruns on an explicit
            * `refetch()` (see hooks/useApi.ts) — a `basis` state change alone

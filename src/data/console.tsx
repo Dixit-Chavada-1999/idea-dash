@@ -11,10 +11,13 @@ export const PAGES: { to: string; label: string; clause?: string }[] = [
 
 /** In-page section anchors. Only meaningful on the dashboard route. */
 export const NAV: NavGroup[] = [
-  {
-    group: 'Run',
-    items: [{ href: '#integrity', label: 'Ingestion & integrity', clause: '§2' }],
-  },
+  // The Run group held a single link to #integrity. That section is hidden
+  // (see pages/Dashboard.tsx), and a rail link to an anchor that no longer
+  // renders scrolls nowhere, so the group comes out with it.
+  // {
+  //   group: 'Run',
+  //   items: [{ href: '#integrity', label: 'Ingestion & integrity', clause: '§2' }],
+  // },
   {
     group: 'Board view',
     items: [

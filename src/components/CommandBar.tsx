@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { dashboardApi } from '../api/dashboard'
 import { ApiError } from '../api/client'
 import { useAuth } from '../auth/context'
+import { useApi } from '../hooks/useApi'
 import { useBasis } from '../basis/context'
 import type { SyncResponse } from '../contracts/dashboard'
 
@@ -20,6 +21,48 @@ type SyncState =
   | { phase: 'done'; result: SyncResponse }
   | { phase: 'refused'; message: string }
   | { phase: 'failed'; message: string }
+
+/**
+ * When the reporting database was last rebuilt from the CRM.
+ *
+ * Sits beside the button that does the rebuilding, because the two answer one
+ * question between them: how old is this, and can I do something about it.
+ *
+ * Not `generatedAt` — that is when this page was read, which is always seconds
+ * ago and says nothing about the data. A failed or refused attempt since the
+ * last good run is named, since a console quietly serving week-old figures
+ * under a recent-looking timestamp is the failure worth catching.
+ */
+function LastSync() {
+  const state = useApi(() => dashboardApi.run())
+  if (state.status !== 'ready') return null
+
+  const { succeededAt, lastAttempt } = state.data.lastSync
+  const when = (iso: string) =>
+    new Date(iso).toLocaleString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+
+  return (
+    <span className="last-sync">
+      {succeededAt ? (
+        <>
+          Last synced <b>{when(succeededAt)}</b>
+        </>
+      ) : (
+        <>No sync recorded yet</>
+      )}
+      {lastAttempt && (
+        <span className={`last-sync-warn ${lastAttempt.outcome}`}>
+          {lastAttempt.outcome === 'refused' ? 'refused' : 'failed'} {when(lastAttempt.at)}
+        </span>
+      )}
+    </span>
+  )
+}
 
 function SyncButton() {
   const [state, setState] = useState<SyncState>({ phase: 'idle' })
@@ -57,6 +100,9 @@ function SyncButton() {
 
   return (
     <div className="sync">
+      {/* The running note answers the same question and is more urgent, so the
+          date stands aside for it rather than pushing the bar onto two rows. */}
+      {state.phase === 'idle' && <LastSync />}
       <button
         className="btn"
         type="button"

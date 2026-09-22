@@ -414,6 +414,26 @@ export type MovementsResponse = {
  * measured is how current the data is and how much of it survives the active
  * filter — which is what the header was really claiming.
  */
+/**
+ * When the reporting database was last rebuilt from the CRM.
+ *
+ * Recorded by the sync itself, in the primary database — the reporting
+ * database is replaced wholesale on every run, so it cannot hold its own
+ * history. Null before the first recorded run.
+ */
+export type LastSync = {
+  /** finish time of the last run that actually rebuilt the data */
+  succeededAt: string | null
+  tables: number | null
+  rowsAfter: number | null
+  /**
+   * The most recent attempt, but only when it was *not* that success — a sync
+   * failing unnoticed while the header shows a healthy older date is the case
+   * this field exists for.
+   */
+  lastAttempt: { at: string; outcome: 'refused' | 'failed'; detail: string | null } | null
+}
+
 export type RunResponse = {
   /** most recent fact anywhere in the reporting database, 'YYYY-MM-DD' */
   latestData: string | null
@@ -430,6 +450,8 @@ export type RunResponse = {
    */
   sources: { label: string; rows: number; latest: string | null }[]
   generatedAt: string
+  /** when the data was last rebuilt from the CRM — see `LastSync` */
+  lastSync: LastSync
 }
 
 /* ------------------------------------------------------------ decisions */
