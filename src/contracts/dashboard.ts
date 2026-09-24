@@ -301,6 +301,21 @@ export type PortfolioResponse = {
      * practice. Held out rather than guessed into a bucket.
      */
     unattributedHours: number
+    /**
+     * Utilisation month by month over the last twelve complete months, one
+     * line per discipline — the trend asked for on the 22 Sep call.
+     */
+    trend: {
+      label: string
+      /** '2025-09' … '2026-08', oldest first */
+      keys: string[]
+      /** aligned with `keys`; null where a month booked no hours to divide by */
+      series: { label: string; pct: (number | null)[] }[]
+      /** every discipline together, including the omitted ones */
+      overall: (number | null)[]
+      /** disciplines not drawn as their own line, per the call */
+      omitted: string[]
+    }
   }
   generatedAt: string
 }

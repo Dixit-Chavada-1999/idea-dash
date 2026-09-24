@@ -878,6 +878,45 @@
     background: var(--color-amber);
     border-color: var(--color-amber);
   }
+  /* Hover readout for the utilisation trend. Positioned against the chart's own
+     wrapper; pointer-events off so it never steals the hover it is showing. */
+  .trend-tip {
+    position: absolute;
+    top: 8px;
+    min-width: 170px;
+    padding: 8px 10px;
+    background: var(--color-panel);
+    border: 1px solid var(--color-rule);
+    border-radius: 4px;
+    box-shadow: 0 4px 14px rgba(13, 27, 38, 0.12);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--color-ink);
+    pointer-events: none;
+  }
+  .trend-tip-hd {
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .trend-tip-row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    line-height: 1.7;
+  }
+  .trend-tip-row i {
+    width: 12px;
+    height: 3px;
+    border-radius: 2px;
+    flex: none;
+  }
+  .trend-tip-row span {
+    color: var(--color-ink-2);
+  }
+  .trend-tip-row b {
+    margin-left: auto;
+    font-weight: 600;
+  }
   .panel-hd .r b {
     color: #fff;
     font-weight: 600;

@@ -9,7 +9,7 @@ import type { PortfolioResponse } from '../contracts/dashboard'
 import { useApi } from '../hooks/useApi'
 import { gbp } from '../data/money'
 import { download, stamped, toCsv } from '../data/csv'
-import { UtilisationChart } from '../components/UtilisationChart'
+import { UtilisationTrendChart } from '../components/UtilisationTrendChart'
 
 const pct = (n: number) => `${n.toFixed(1)}%`
 
@@ -231,11 +231,11 @@ function UtilisationPanel({ data }: { data: PortfolioResponse['utilisation'] }) 
 
   return (
     <Panel
-      title="Utilisation by discipline"
-      clause="email 30 Aug"
+      title="Utilisation trend by discipline"
+      clause="email 30 Aug · call 22 Sep"
       right={
         <>
-          {data.window.label}
+          Monthly · {data.trend.label} · {data.window.label}
           {data.rating && (
             <>
               {' '}
@@ -257,6 +257,12 @@ function UtilisationPanel({ data }: { data: PortfolioResponse['utilisation'] }) 
             </>
           )}
           {data.rating?.note}{' '}
+          {data.trend.omitted.length > 0 && (
+            <>
+              {data.trend.omitted.join(' and ')} are not drawn as their own lines — OPE books no project work, and
+              ELC hours now go under INC — but both are inside the dashed all-disciplines line.{' '}
+            </>
+          )}
           Leave ({Math.round(data.current.leaveHours).toLocaleString('en-GB')} hrs this window) sits outside the
           ratio on both sides, per the formula given on the call.
           {bundled.length > 0 && (
@@ -292,10 +298,16 @@ function UtilisationPanel({ data }: { data: PortfolioResponse['utilisation'] }) 
         '  starts LEAVE   -> leave, left out of both\n' +
         '                    sides entirely\n' +
         '  anything else  -> overhead\n\n' +
-        'Measured over the last complete quarter'
+        'One point per month, last 12 complete months\n' +
+        '  -- the current month is left out, a half-\n' +
+        '     booked month reads mechanically low\n\n' +
+        'OPE and ELC are not drawn on their own\n' +
+        '  -- both still count in the dashed line\n\n' +
+        'Rating and the figure below: the last\n' +
+        'complete quarter'
       }
     >
-      <UtilisationChart bars={data.buckets.map((b) => ({ label: b.label, pct: b.pct }))} />
+      <UtilisationTrendChart keys={data.trend.keys} series={data.trend.series} overall={data.trend.overall} />
     </Panel>
   )
 }
@@ -410,8 +422,66 @@ function OrdersByDisciplinePanel({ data }: { data: PortfolioResponse['ordersByDi
   )
 }
 
-function SectorPanel({ data }: { data: PortfolioResponse['sectorSplit'] }) {
+function SectorPanel({ data, basis }: { data: PortfolioResponse['sectorSplit']; basis: string }) {
   const colours = sectorColours(data.current.slices, data.prior.slices)
+
+  /*
+   * One row per sector, both periods side by side — the comparison the two pies
+   * are drawn for, in a shape a spreadsheet can chart again without a pivot.
+   *
+   * Every sector in either period gets a row, ordered by this year's value, so a
+   * sector that won nothing this year still shows what it won last year rather
+   * than vanishing. Same money rules as the order-value export: rounded to the
+   * penny, £ with no thousands separators, and the Total row summed from the
+   * rounded cells so the columns add up to what they say.
+   */
+  const exportCsv = () => {
+    const penny = (n: number) => Math.round(n * 100) / 100
+    const money = (n: number) => `£${penny(n).toFixed(2)}`
+    const pct = (n: number, total: number) => (total ? `${((n / total) * 100).toFixed(1)}%` : '')
+    const find = (slices: typeof data.current.slices, name: string) => slices.find((s) => s.name === name)
+
+    const names = [...new Set([...data.current.slices, ...data.prior.slices].map((s) => s.name))].sort(
+      (a, b) => (find(data.current.slices, b)?.value ?? 0) - (find(data.current.slices, a)?.value ?? 0),
+    )
+    const cells = names.map((name) => {
+      const c = find(data.current.slices, name)
+      const p = find(data.prior.slices, name)
+      return { name, cur: penny(c?.value ?? 0), curOrders: c?.orders ?? 0, pri: penny(p?.value ?? 0), priOrders: p?.orders ?? 0 }
+    })
+    const curTotal = penny(cells.reduce((s, r) => s + r.cur, 0))
+    const priTotal = penny(cells.reduce((s, r) => s + r.pri, 0))
+
+    const header = [
+      'Sector',
+      `${data.current.label} (£)`,
+      `${data.current.label} %`,
+      `${data.current.label} orders`,
+      `${data.prior.label} (£)`,
+      `${data.prior.label} %`,
+      `${data.prior.label} orders`,
+    ]
+    const rows = cells.map((r) => [
+      r.name,
+      money(r.cur),
+      pct(r.cur, curTotal),
+      r.curOrders,
+      money(r.pri),
+      pct(r.pri, priTotal),
+      r.priOrders,
+    ])
+    const totalRow = [
+      'Total',
+      money(curTotal),
+      curTotal ? '100.0%' : '',
+      cells.reduce((s, r) => s + r.curOrders, 0),
+      money(priTotal),
+      priTotal ? '100.0%' : '',
+      cells.reduce((s, r) => s + r.priOrders, 0),
+    ]
+
+    download(stamped(`sector-split-${basis}`), toCsv([header, ...rows, totalRow]))
+  }
 
   return (
     <Panel
@@ -420,9 +490,14 @@ function SectorPanel({ data }: { data: PortfolioResponse['sectorSplit'] }) {
       /* the tie is checked server-side, so the panel reports the result rather
          than repeating the claim */
       right={
-        data.tiesToHeadline
-          ? 'Purchase orders by sector · totals tie to the headline card'
-          : `Purchase orders by sector · total does NOT tie — headline reads ${gbp(data.headlineOrders)}`
+        <>
+          {data.tiesToHeadline
+            ? 'Purchase orders by sector · totals tie to the headline card'
+            : `Purchase orders by sector · total does NOT tie — headline reads ${gbp(data.headlineOrders)}`}{' '}
+          <button type="button" className="panel-export" onClick={exportCsv}>
+            Export CSV
+          </button>
+        </>
       }
       calc={
         'Orders won in the window, grouped by the sector\n' +
@@ -503,7 +578,7 @@ export function PortfolioShape() {
             <UtilisationPanel data={state.data.utilisation} />
           </div>
           <div className="row">
-            <SectorPanel data={state.data.sectorSplit} />
+            <SectorPanel data={state.data.sectorSplit} basis={basis} />
           </div>
         </>
       )}
