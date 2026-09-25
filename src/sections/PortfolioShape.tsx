@@ -174,7 +174,7 @@ function BacklogPanel({ data }: { data: PortfolioResponse['backlogByDiscipline']
             <>
               <br />
               <strong>
-                {bundled.map((b) => `${b.label} bundles ${b.composedOf.join(' + ')}`).join('; ')}.
+                {bundled.map((b) => `${b.composedOf.join(' and ')} are shown together as ${b.label}`).join('; ')}.
               </strong>{' '}
               Both are separable in this data — the disciplines carry their own budget hours, so this bundling can
               be unbundled whenever a combined view is no longer wanted.{' '}
@@ -212,7 +212,7 @@ function BacklogPanel({ data }: { data: PortfolioResponse['backlogByDiscipline']
           label: b.label,
           value: b.value,
           colour: ['#1D6FA5', '#58A3CE', '#E8940C', '#9AC7E3'][i % 4],
-          ...(b.bundled && { sub: { text: `${b.composedOf.join(' + ')}`, colour: '#7B8FA0' } }),
+          ...(b.bundled && b.label !== b.composedOf.join('+') && { sub: { text: `${b.composedOf.join(' + ')}`, colour: '#7B8FA0' } }),
         }))}
       />
     </Panel>
@@ -268,7 +268,7 @@ function UtilisationPanel({ data }: { data: PortfolioResponse['utilisation'] }) 
           {bundled.length > 0 && (
             <>
               {' '}
-              <strong>{bundled.map((b) => `${b.label} bundles ${b.composedOf.join(' + ')}`).join('; ')}.</strong>
+              <strong>{bundled.map((b) => `${b.composedOf.join(' and ')} are shown together as ${b.label}`).join('; ')}.</strong>
             </>
           )}
           {data.unbucketed.length > 0 && (
@@ -395,7 +395,7 @@ function OrdersByDisciplinePanel({ data }: { data: PortfolioResponse['ordersByDi
           {bundled.length > 0 && (
             <>
               {' '}
-              <strong>{bundled.map((b) => `${b.label} bundles ${b.composedOf.join(' + ')}`).join('; ')}.</strong>
+              <strong>{bundled.map((b) => `${b.composedOf.join(' and ')} are shown together as ${b.label}`).join('; ')}.</strong>
             </>
           )}
           {data.unallocated.total > 0 && (
